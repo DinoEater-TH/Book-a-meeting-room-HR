@@ -65,9 +65,12 @@ export default function LoginForm({ authEnabled }: { authEnabled: boolean }) {
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-2xl text-white shadow-lg shadow-emerald-600/20">
-            ห
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="โลโก้ระบบจองห้องประชุม"
+            className="mx-auto mb-4 size-14 object-contain"
+          />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">ระบบจองห้องประชุม</h1>
           <p className="mt-1 text-sm text-slate-500">กองทรัพยากรบุคคล</p>
         </div>
