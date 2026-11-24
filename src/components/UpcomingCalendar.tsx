@@ -13,12 +13,12 @@ import {
   todayISO,
 } from "@/lib/dates";
 import { paletteForEmail, type BookingPalette } from "@/lib/colors";
-import { getRoom } from "@/lib/rooms";
 
 type Props = {
   bookings: Booking[];
   paletteByEmail: Record<string, BookingPalette>;
   onBookingClick: (booking: Booking) => void;
+  onDayClick: (date: string) => void;
 };
 
 type View = "week" | "month";
@@ -36,11 +36,15 @@ function startOfWeekSunday(iso: string): string {
   return addDays(iso, -parseISODate(iso).getDay());
 }
 
-export default function UpcomingCalendar({ bookings, paletteByEmail, onBookingClick }: Props) {
+export default function UpcomingCalendar({
+  bookings,
+  paletteByEmail,
+  onBookingClick,
+  onDayClick,
+}: Props) {
   const today = todayISO();
   const [view, setView] = useState<View>("month");
   const [anchor, setAnchor] = useState(today);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Booking[]>();
@@ -65,19 +69,16 @@ export default function UpcomingCalendar({ bookings, paletteByEmail, onBookingCl
     return Array.from({ length: 42 }, (_, index) => addDays(first, index));
   }, [view, anchor]);
 
-  const selectedBookings = selectedDate ? byDate.get(selectedDate) ?? [] : [];
   const maxChips = view === "week" ? 3 : 2;
 
   function move(direction: number) {
     setAnchor((current) =>
       view === "week" ? addDays(current, direction * 7) : addMonths(current, direction),
     );
-    setSelectedDate(null);
   }
 
   function goToday() {
     setAnchor(today);
-    setSelectedDate(today);
   }
 
   const legend = useMemo(() => {
@@ -103,7 +104,7 @@ export default function UpcomingCalendar({ bookings, paletteByEmail, onBookingCl
             {view === "week"
               ? `${formatThaiDate(days[0], { short: true })} – ${formatThaiDate(days[6], { short: true })}`
               : formatThaiMonthYear(anchor)}
-            {" · คลิกวันที่เพื่อดูรายละเอียด"}
+            {" · คลิกวันที่เพื่อจองห้อง"}
           </p>
         </div>
 
@@ -113,10 +114,7 @@ export default function UpcomingCalendar({ bookings, paletteByEmail, onBookingCl
               <button
                 key={mode}
                 type="button"
-                onClick={() => {
-                  setView(mode);
-                  setSelectedDate(null);
-                }}
+                onClick={() => setView(mode)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                   view === mode
                     ? "bg-white text-orange-700 shadow-sm"
@@ -172,23 +170,22 @@ export default function UpcomingCalendar({ bookings, paletteByEmail, onBookingCl
           const isToday = iso === today;
           const outsideMonth = view === "month" && !iso.startsWith(anchor.slice(0, 7));
           const isPast = iso < today;
-          const isSelected = iso === selectedDate;
           return (
             <div
               key={iso}
               role="button"
               tabIndex={0}
-              aria-label={`${formatThaiDate(iso, { weekday: true })} มี ${list.length} รายการจอง`}
-              onClick={() => setSelectedDate(iso)}
+              aria-label={`${formatThaiDate(iso, { weekday: true })} มี ${list.length} รายการจอง · คลิกเพื่อจอง`}
+              onClick={() => onDayClick(iso)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  setSelectedDate(iso);
+                  onDayClick(iso);
                 }
               }}
               className={`min-h-[92px] border-b border-r border-slate-100 p-1.5 text-left transition sm:min-h-[112px] sm:p-2 ${
-                outsideMonth || isPast ? "bg-slate-50/70" : "bg-white hover:bg-orange-50/40"
-              } ${isSelected ? "ring-2 ring-inset ring-orange-500" : ""}`}
+                outsideMonth || isPast ? "bg-slate-50/70" : "cursor-pointer bg-white hover:bg-orange-50/40"
+              }`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span
@@ -235,48 +232,6 @@ export default function UpcomingCalendar({ bookings, paletteByEmail, onBookingCl
           );
         })}
       </div>
-
-      {selectedDate && (
-        <div className="border-t border-slate-100 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              รายละเอียด {formatThaiDate(selectedDate, { weekday: true })}
-            </h3>
-            <span className="text-xs text-slate-400">{selectedBookings.length} รายการ</span>
-          </div>
-          {selectedBookings.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-400">ไม่มีการจองในวันนี้</p>
-          ) : (
-            <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100">
-              {selectedBookings.map((booking) => {
-                const palette = paletteForEmail(paletteByEmail, booking.requesterEmail);
-                return (
-                  <button
-                    key={booking.id}
-                    type="button"
-                    onClick={() => onBookingClick(booking)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
-                  >
-                    <span className={`size-2.5 shrink-0 rounded-full ${palette.dot}`} />
-                    <span className="w-28 shrink-0 text-xs font-semibold tabular-nums text-slate-600">
-                      {timeLabel(booking)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-slate-800">
-                        {booking.title}
-                      </span>
-                      <span className="block truncate text-[11px] text-slate-400">
-                        {getRoom(booking.roomId)?.shortName} · {requesterLabel(booking)}
-                      </span>
-                    </span>
-                    <span className="text-slate-300">›</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       {legend.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-slate-100 bg-slate-50/60 px-5 py-3">

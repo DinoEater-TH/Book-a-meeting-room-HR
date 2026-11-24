@@ -282,6 +282,10 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             bookings={upcomingBookings}
             paletteByEmail={paletteByEmail}
             onBookingClick={(booking) => setDialog({ type: "detail", booking })}
+            onDayClick={(selectedDate) => {
+              setDate(selectedDate);
+              setDialog({ type: "create", roomId: "room10", hour: 8 });
+            }}
           />
         ) : (
           <section className="card divide-y divide-slate-100 overflow-hidden">

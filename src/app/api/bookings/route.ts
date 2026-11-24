@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAdmin, requireUser, UnauthorizedError } from "@/lib/auth";
 import { parseBookingInput, toNewBooking } from "@/lib/bookings";
 import { isISODate, monthRange, todayISO } from "@/lib/dates";
+import { notifyBookerByEmail } from "@/lib/email";
 import { notifyMeetingSupport } from "@/lib/notify";
 import { getBookingStore } from "@/lib/sheets";
 import { logUsage } from "@/lib/usage-log";
@@ -78,7 +79,10 @@ export async function POST(request: NextRequest) {
     }
 
     const booking = await store.create(toNewBooking(parsed.value, user));
-    await notifyMeetingSupport(booking, "created");
+    await Promise.all([
+      notifyMeetingSupport(booking, "created"),
+      notifyBookerByEmail(booking, "created"),
+    ]);
     await logUsage({
       email: user.email,
       name: user.name,

@@ -79,7 +79,7 @@ export function parseBookingInput(body: unknown): ParseResult {
 
   const needsOnlineLink = parseYesNo(raw.needsOnlineLink);
   const onlineLinkNote = typeof raw.onlineLinkNote === "string" ? raw.onlineLinkNote.trim() : "";
-  if (onlineLinkNote.length > MAX_NOTE) return { ok: false, error: "รายละเอียดลิงก์ประชุมออนไลน์ยาวเกินไป" };
+  if (onlineLinkNote.length > MAX_NOTE) return { ok: false, error: "รายละเอียดเจ้าหน้าที่ดูแลการประชุมยาวเกินไป" };
 
   const meetingLink = typeof raw.meetingLink === "string" ? raw.meetingLink.trim() : "";
   if (meetingLink.length > MAX_NOTE) return { ok: false, error: "ลิงก์ประชุมยาวเกินไป" };

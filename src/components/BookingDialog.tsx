@@ -10,15 +10,58 @@ import { ROOMS, type Room } from "@/lib/rooms";
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20";
 
-const EQUIPMENT_OPTIONS = ["ทีวี", "ไมค์", "pointer", "กล้อง", "อื่นๆ"] as const;
+const EQUIPMENT_OPTIONS = ["Smart TV", "ไมโคโฟน", "Pointer", "กล้อง webcam", "อื่นๆ"] as const;
 type EquipmentOption = (typeof EQUIPMENT_OPTIONS)[number];
 
-function splitEquipment(value: string): { choice: string; other: string } {
-  if (!value) return { choice: "", other: "" };
-  if ((EQUIPMENT_OPTIONS as readonly string[]).includes(value)) {
-    return { choice: value, other: "" };
+/** Older bookings used Thai/short labels; map them to the current wording. */
+const EQUIPMENT_ALIASES: Record<string, string> = {
+  "ทีวี": "Smart TV",
+  "tv": "Smart TV",
+  "smart tv": "Smart TV",
+  "ไมค์": "ไมโคโฟน",
+  "ไมโครโฟน": "ไมโคโฟน",
+  "ไมโคโฟน": "ไมโคโฟน",
+  "mic": "ไมโคโฟน",
+  "microphone": "ไมโคโฟน",
+  "pointer": "Pointer",
+  "โปอินเตอร์": "Pointer",
+  "กล้อง": "กล้อง webcam",
+  "webcam": "กล้อง webcam",
+  "กล้อง webcam": "กล้อง webcam",
+  "camera": "กล้อง webcam",
+  "อื่นๆ": "อื่นๆ",
+  "อื่น ๆ": "อื่นๆ",
+  "other": "อื่นๆ",
+  "others": "อื่นๆ",
+};
+
+function splitEquipment(value?: string): { choices: string[]; other: string } {
+  if (!value?.trim()) return { choices: [], other: "" };
+  const choices: string[] = [];
+  const others: string[] = [];
+
+  for (const raw of value.split(/[,،]/)) {
+    const token = raw.trim();
+    if (!token) continue;
+    const mapped = EQUIPMENT_ALIASES[token.toLowerCase()] ?? EQUIPMENT_ALIASES[token];
+    if (mapped === "อื่นๆ") continue;
+    if (mapped) {
+      if (!choices.includes(mapped)) choices.push(mapped);
+      continue;
+    }
+    if (!others.includes(token)) others.push(token);
   }
-  return { choice: "อื่นๆ", other: value };
+  if (others.length && !choices.includes("อื่นๆ")) choices.push("อื่นๆ");
+  return { choices, other: others.join(", ") };
+}
+
+function serializeEquipment(choices: string[], other: string): string | undefined {
+  const extra = other.trim();
+  const parts = choices.map((choice) =>
+    choice === "อื่นๆ" ? extra || "อื่นๆ" : choice,
+  );
+  if (extra && !choices.includes("อื่นๆ")) parts.push(extra);
+  return parts.length > 0 ? parts.join(", ") : undefined;
 }
 
 function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -143,9 +186,8 @@ function BookingForm({
   const [endHour, setEndHour] = useState(initialEndHour);
   const [title, setTitle] = useState(initialTitle);
   const [note, setNote] = useState(initialNote);
-  const [needsEquipment, setNeedsEquipment] = useState(initialNeedsEquipment);
   const initialEquipment = splitEquipment(initialEquipmentNote);
-  const [equipmentChoice, setEquipmentChoice] = useState(initialEquipment.choice);
+  const [equipmentChoices, setEquipmentChoices] = useState<string[]>(initialEquipment.choices);
   const [equipmentOther, setEquipmentOther] = useState(initialEquipment.other);
   const [needsOnlineLink, setNeedsOnlineLink] = useState(initialNeedsOnlineLink);
   const [onlineLinkNote, setOnlineLinkNote] = useState(initialOnlineLinkNote);
@@ -173,6 +215,8 @@ function BookingForm({
       return;
     }
 
+    const equipmentNote = serializeEquipment(equipmentChoices, equipmentOther);
+
     setSubmitting(true);
     try {
       const booking = await onSubmit({
@@ -182,12 +226,8 @@ function BookingForm({
         endHour,
         title: title.trim(),
         note: note.trim(),
-        needsEquipment,
-        equipmentNote: needsEquipment
-          ? equipmentChoice === "อื่นๆ"
-            ? equipmentOther.trim()
-            : equipmentChoice
-          : "",
+        needsEquipment: Boolean(equipmentNote),
+        equipmentNote: equipmentNote ?? "",
         needsOnlineLink,
         onlineLinkNote: needsOnlineLink ? onlineLinkNote.trim() : "",
         meetingLink: initialMeetingLink || undefined,
@@ -298,45 +338,65 @@ function BookingForm({
 
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
             <p className="text-xs font-semibold text-slate-700">ความช่วยเหลือเพิ่มเติมสำหรับการประชุม</p>
-            <YesNoSelect
-              label="ต้องการใช้อุปกรณ์ในการประชุมหรือไม่?"
-              value={needsEquipment}
-              onChange={setNeedsEquipment}
-            />
-            {needsEquipment && (
-              <div className="space-y-2">
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-slate-600">ระบุอุปกรณ์ที่ต้องการ</span>
-                  <select
-                    value={equipmentChoice}
-                    onChange={(event) => setEquipmentChoice(event.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">-- เลือกอุปกรณ์ --</option>
-                    {EQUIPMENT_OPTIONS.map((option: EquipmentOption) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {equipmentChoice === "อื่นๆ" && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-slate-600">ระบุเพิ่มเติม</span>
-                    <input
-                      value={equipmentOther}
-                      onChange={(event) => setEquipmentOther(event.target.value)}
-                      placeholder="เช่น กระดานไวท์บอร์ด, สาย HDMI"
-                      maxLength={500}
-                      className={inputClass}
-                    />
-                  </label>
-                )}
+
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">
+                อุปกรณ์ที่ต้องการ (เลือกได้หลายรายการ)
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {EQUIPMENT_OPTIONS.map((option: EquipmentOption) => {
+                  const checked = equipmentChoices.includes(option);
+                  return (
+                    <label
+                      key={option}
+                      className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition ${
+                        checked
+                          ? "border-orange-300 bg-orange-50 font-medium text-orange-800"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          setEquipmentChoices((current) =>
+                            event.target.checked
+                              ? [...current, option]
+                              : current.filter((item) => item !== option),
+                          );
+                        }}
+                        className="size-4 accent-orange-600"
+                      />
+                      {option}
+                    </label>
+                  );
+                })}
               </div>
-            )}
+              <label className="mt-2 block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                  ระบุอุปกรณ์เพิ่มเติม (ไม่บังคับ)
+                </span>
+                <input
+                  value={equipmentOther}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setEquipmentOther(value);
+                    if (value.trim() && !equipmentChoices.includes("อื่นๆ")) {
+                      setEquipmentChoices((current) => [...current, "อื่นๆ"]);
+                    }
+                  }}
+                  placeholder="เช่น กระดานไวท์บอร์ด, สาย HDMI"
+                  maxLength={500}
+                  className={inputClass}
+                />
+              </label>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                ความต้องการอุปกรณ์จะถูกส่งแจ้งผ่าน Google Chat ให้ pongka@kku.ac.th โดยอัตโนมัติ
+              </p>
+            </div>
 
             <YesNoSelect
-              label="ต้องการลิงก์สำหรับประชุมออนไลน์หรือไม่?"
+              label="ต้องการเจ้าหน้าที่ดูแลการประชุมหรือไม่?"
               value={needsOnlineLink}
               onChange={setNeedsOnlineLink}
             />
@@ -347,12 +407,12 @@ function BookingForm({
                 </p>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">
-                    รายละเอียดเพิ่มเติม (ไม่บังคับ)
+                    รายละเอียดที่ต้องการให้เจ้าหน้าที่ดูแล (ไม่บังคับ)
                   </span>
                   <textarea
                     value={onlineLinkNote}
                     onChange={(event) => setOnlineLinkNote(event.target.value)}
-                    placeholder="เช่น ต้องการลิงก์ Google Meet สำหรับผู้เข้าร่วมจากต่างจังหวัด"
+                    placeholder="เช่น ต้องการเจ้าหน้าที่เปิดห้องและตั้งค่าอุปกรณ์ก่อนประชุม"
                     rows={2}
                     maxLength={500}
                     className={`${inputClass} resize-none`}
@@ -604,7 +664,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
         : "ไม่ต้องการ",
     ],
     [
-      "ลิงก์ประชุมออนไลน์",
+      "เจ้าหน้าที่ดูแลการประชุม",
       booking.needsOnlineLink
         ? `ต้องการ${booking.onlineLinkNote ? ` · ${booking.onlineLinkNote}` : ""}`
         : "ไม่ต้องการ",
@@ -638,7 +698,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
           ))}
         </dl>
 
-        {booking.needsOnlineLink && (
+        {(booking.meetingLink || isAdmin) && (
           <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50/60 p-4">
             <p className="text-xs font-semibold text-sky-900">ลิงก์การประชุมออนไลน์</p>
             {booking.meetingLink ? (

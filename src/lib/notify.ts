@@ -28,7 +28,7 @@ export async function notifyMeetingSupport(booking: Booking, action: "created" |
   }
   if (booking.needsOnlineLink) {
     lines.push(
-      `ลิงก์ประชุมออนไลน์: ต้องการ${booking.onlineLinkNote ? ` (${booking.onlineLinkNote})` : ""}`,
+      `เจ้าหน้าที่ดูแลการประชุม: ต้องการ${booking.onlineLinkNote ? ` (${booking.onlineLinkNote})` : ""}`,
     );
   }
   if (booking.meetingLink) {

@@ -17,7 +17,9 @@ export type Booking = {
   /** ความช่วยเหลือเพิ่มเติมสำหรับการประชุม */
   needsEquipment?: boolean;
   equipmentNote?: string;
+  /** ต้องการเจ้าหน้าที่ดูแลการประชุม (ใช้คอลัมน์เดิม needsOnlineLink ใน Sheets) */
   needsOnlineLink?: boolean;
+  /** รายละเอียดที่ต้องการให้เจ้าหน้าที่ดูแล (คอลัมน์เดิม onlineLinkNote) */
   onlineLinkNote?: string;
   /** ลิงก์ประชุมที่ผู้ดูแลระบบเป็นคนใส่ให้ (เฉพาะ pongka@kku.ac.th) */
   meetingLink?: string;
@@ -38,7 +40,9 @@ export type BookingEditFields = Pick<
   note?: string;
   needsEquipment?: boolean;
   equipmentNote?: string;
+  /** ต้องการเจ้าหน้าที่ดูแลการประชุม (ใช้คอลัมน์เดิม needsOnlineLink ใน Sheets) */
   needsOnlineLink?: boolean;
+  /** รายละเอียดที่ต้องการให้เจ้าหน้าที่ดูแล (คอลัมน์เดิม onlineLinkNote) */
   onlineLinkNote?: string;
   meetingLink?: string;
 };

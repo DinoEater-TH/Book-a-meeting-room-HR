@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser, isAdmin, UnauthorizedError } from "@/lib/auth";
 import { isLegacyBooking, parseBookingInput } from "@/lib/bookings";
+import { notifyBookerByEmail } from "@/lib/email";
 import { notifyMeetingSupport } from "@/lib/notify";
 import { getBookingStore } from "@/lib/sheets";
 import { logUsage } from "@/lib/usage-log";
@@ -76,7 +77,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     if (!updated) {
       return NextResponse.json({ error: "ไม่พบรายการจองนี้" }, { status: 404 });
     }
-    await notifyMeetingSupport(updated, "updated");
+    await Promise.all([
+      notifyMeetingSupport(updated, "updated"),
+      notifyBookerByEmail(updated, "updated"),
+    ]);
     await logUsage({
       email: user.email,
       name: user.name,
@@ -115,6 +119,7 @@ export async function DELETE(_request: NextRequest, { params }: Context) {
     }
 
     await store.remove(id);
+    await notifyBookerByEmail(booking, "cancelled");
     await logUsage({
       email: user.email,
       name: user.name,
