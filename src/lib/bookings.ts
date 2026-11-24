@@ -10,6 +10,10 @@ export type ParsedBookingInput = {
   endHour: number;
   title: string;
   note?: string;
+  needsEquipment: boolean;
+  equipmentNote?: string;
+  needsOnlineLink: boolean;
+  onlineLinkNote?: string;
 };
 
 export type ParseResult =
@@ -18,6 +22,16 @@ export type ParseResult =
 
 const MAX_TITLE = 200;
 const MAX_NOTE = 500;
+
+function parseYesNo(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    return ["true", "yes", "1", "ต้องการ"].includes(value.trim().toLowerCase());
+  }
+  return false;
+}
+
 
 export function parseBookingInput(body: unknown): ParseResult {
   if (!body || typeof body !== "object") {
@@ -45,6 +59,14 @@ export function parseBookingInput(body: unknown): ParseResult {
   const note = typeof raw.note === "string" ? raw.note.trim() : "";
   if (note.length > MAX_NOTE) return { ok: false, error: "หมายเหตุยาวเกินไป" };
 
+  const needsEquipment = parseYesNo(raw.needsEquipment);
+  const equipmentNote = typeof raw.equipmentNote === "string" ? raw.equipmentNote.trim() : "";
+  if (equipmentNote.length > MAX_NOTE) return { ok: false, error: "รายละเอียดอุปกรณ์ยาวเกินไป" };
+
+  const needsOnlineLink = parseYesNo(raw.needsOnlineLink);
+  const onlineLinkNote = typeof raw.onlineLinkNote === "string" ? raw.onlineLinkNote.trim() : "";
+  if (onlineLinkNote.length > MAX_NOTE) return { ok: false, error: "รายละเอียดลิงก์ประชุมออนไลน์ยาวเกินไป" };
+
   return {
     ok: true,
     value: {
@@ -54,6 +76,10 @@ export function parseBookingInput(body: unknown): ParseResult {
       endHour,
       title,
       note: note || undefined,
+      needsEquipment,
+      equipmentNote: needsEquipment ? equipmentNote || undefined : undefined,
+      needsOnlineLink,
+      onlineLinkNote: needsOnlineLink ? onlineLinkNote || undefined : undefined,
     },
   };
 }

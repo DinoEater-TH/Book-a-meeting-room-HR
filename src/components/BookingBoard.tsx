@@ -18,6 +18,8 @@ type DialogState =
   | { type: "detail"; booking: Booking }
   | null;
 
+type Tab = "board" | "mine" | "upcoming";
+
 type Props = {
   user: SessionUser;
   initialBookings: Booking[];
@@ -26,11 +28,15 @@ type Props = {
   isAdminUser: boolean;
 };
 
+function timeLabel(booking: Booking): string {
+  return `${String(booking.startHour).padStart(2, "0")}:00–${String(booking.endHour).padStart(2, "0")}:00`;
+}
+
 export default function BookingBoard({ user, initialBookings, isMock, backendName, isAdminUser }: Props) {
   const [date, setDate] = useState(todayISO);
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [tab, setTab] = useState<"board" | "mine">("board");
+  const [tab, setTab] = useState<Tab>("board");
   const [toast, setToast] = useState<string | null>(null);
 
   const dayBookings = useMemo(
@@ -44,6 +50,18 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
         .filter((booking) => booking.requesterEmail.toLowerCase() === user.email.toLowerCase())
         .sort((a, b) => (a.date === b.date ? a.startHour - b.startHour : a.date.localeCompare(b.date))),
     [bookings, user.email],
+  );
+
+  const upcomingBookings = useMemo(
+    () =>
+      bookings
+        .filter((booking) => booking.date >= todayISO())
+        .sort((a, b) =>
+          a.date === b.date
+            ? a.roomId.localeCompare(b.roomId) || a.startHour - b.startHour
+            : a.date.localeCompare(b.date),
+        ),
+    [bookings],
   );
 
   const isMine = (booking: Booking) =>
@@ -79,9 +97,12 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-lg font-bold text-white shadow-sm">
-              ห
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="โลโก้ระบบจองห้องประชุม"
+              className="size-10 shrink-0 object-contain"
+            />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-bold text-slate-900 sm:text-base">
                 ระบบจองห้องประชุม
@@ -91,15 +112,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           </div>
 
           <div className="flex items-center gap-3">
-            <span
-              className={`hidden rounded-full px-2.5 py-1 text-[11px] font-medium sm:inline-flex ${
-                isMock ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
-              }`}
-              title={backendName}
-            >
-              {isMock ? "โหมดทดลอง" : "Google Sheets"}
-            </span>
-            <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+            <div className="flex items-center gap-2 border-slate-200 pl-3 sm:border-l">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
                 {initials}
               </span>
@@ -177,11 +190,11 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           </div>
         </div>
 
-        <div className="mb-5 flex gap-1 border-b border-slate-200">
+        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
           <button
             type="button"
             onClick={() => setTab("board")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+            className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "board"
                 ? "border-emerald-600 text-emerald-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
@@ -191,8 +204,19 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           </button>
           <button
             type="button"
+            onClick={() => setTab("upcoming")}
+            className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+              tab === "upcoming"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            รายการจองล่วงหน้า ({upcomingBookings.length})
+          </button>
+          <button
+            type="button"
             onClick={() => setTab("mine")}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+            className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "mine"
                 ? "border-emerald-600 text-emerald-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
@@ -229,6 +253,76 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
               ))}
             </div>
           </>
+        ) : tab === "upcoming" ? (
+          <section className="card divide-y divide-slate-100 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 className="font-semibold text-slate-900">รายการจองล่วงหน้า</h2>
+                <p className="mt-0.5 text-xs text-slate-400">วันนี้เป็นต้นไป · ทุกห้องประชุม</p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                {upcomingBookings.length} รายการ
+              </span>
+            </div>
+
+            {upcomingBookings.length === 0 ? (
+              <p className="px-5 py-12 text-center text-sm text-slate-400">ยังไม่มีรายการจองล่วงหน้า</p>
+            ) : (
+              <>
+                <div className="hidden grid-cols-[112px_118px_1fr_170px_20px] gap-4 border-b border-slate-100 px-5 py-2.5 text-[11px] font-semibold text-slate-400 sm:grid">
+                  <span>วันที่</span>
+                  <span>เวลา</span>
+                  <span>ชื่อเรื่องที่จอง</span>
+                  <span>ผู้จอง</span>
+                  <span />
+                </div>
+                {upcomingBookings.map((booking) => {
+                  const room = getRoom(booking.roomId);
+                  return (
+                    <button
+                      key={booking.id}
+                      type="button"
+                      onClick={() => setDialog({ type: "detail", booking })}
+                      className="flex flex-col gap-2 px-5 py-4 text-left transition hover:bg-slate-50 sm:grid sm:grid-cols-[112px_118px_1fr_170px_20px] sm:items-center sm:gap-4"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">
+                          {formatThaiDate(booking.date, { short: true })}
+                        </p>
+                        <p className="text-[11px] text-slate-400">วัน{weekdayName(booking.date)}</p>
+                      </div>
+                      <p className="text-sm tabular-nums text-slate-700">{timeLabel(booking)}</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-800">{booking.title}</p>
+                        <p className="truncate text-xs text-slate-400">{room?.shortName}</p>
+                        {(booking.needsEquipment || booking.needsOnlineLink) && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {booking.needsEquipment && (
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                ต้องการอุปกรณ์
+                              </span>
+                            )}
+                            {booking.needsOnlineLink && (
+                              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                                ต้องการลิงก์ออนไลน์
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-slate-700">{booking.requesterName}</p>
+                        {booking.requesterEmail !== "legacy@imported.local" && (
+                          <p className="truncate text-[11px] text-slate-400">{booking.requesterEmail}</p>
+                        )}
+                      </div>
+                      <span className="hidden text-slate-300 sm:block">›</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </section>
         ) : (
           <section className="card divide-y divide-slate-100 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -256,9 +350,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
                       <p className={`text-sm font-semibold ${past ? "text-slate-400" : "text-slate-800"}`}>
                         {formatThaiDate(booking.date, { short: true })}
                       </p>
-                      <p className="text-[11px] text-slate-400">
-                        {String(booking.startHour).padStart(2, "0")}:00–{String(booking.endHour).padStart(2, "0")}:00
-                      </p>
+                      <p className="text-[11px] text-slate-400">{timeLabel(booking)}</p>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className={`truncate text-sm font-medium ${past ? "text-slate-400" : "text-slate-800"}`}>
@@ -275,7 +367,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
         )}
 
         <footer className="mt-10 pb-4 text-center text-xs text-slate-400">
-          ระบบจองห้องประชุม · กองทรัพยากรบุคคล · บันทึกข้อมูลลง {backendName}
+          ระบบจองห้องประชุม · กองทรัพยากรบุคคล
         </footer>
       </main>
 

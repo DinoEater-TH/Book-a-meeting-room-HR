@@ -64,6 +64,24 @@ export class GoogleSheetBookingStore implements BookingStore {
     const existing = meta.data.sheets?.find((s) => s.properties?.title === this.tabName);
     if (existing?.properties?.sheetId != null) {
       this.sheetIdCache = existing.properties.sheetId;
+      // Older sheets only had 10 columns. Extend the header so new request
+      // columns are labelled without touching any existing booking rows.
+      const headerRes = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `${this.quotedTab}!A1:N1`,
+      });
+      const currentHeader = (headerRes.data.values?.[0] ?? []).map((cell) => String(cell ?? ""));
+      if (
+        currentHeader.length < SHEET_COLUMNS.length ||
+        SHEET_COLUMNS.some((column, index) => currentHeader[index] !== column)
+      ) {
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `${this.quotedTab}!A1`,
+          valueInputOption: "RAW",
+          requestBody: { values: [[...SHEET_COLUMNS]] },
+        });
+      }
       return this.sheetIdCache;
     }
 
@@ -90,7 +108,7 @@ export class GoogleSheetBookingStore implements BookingStore {
 
     const res = await this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A2:J`,
+      range: `${this.quotedTab}!A2:N`,
       valueRenderOption: "UNFORMATTED_VALUE",
     });
 
@@ -267,7 +285,7 @@ export class GoogleSheetBookingStore implements BookingStore {
 
     const res = await this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A2:J`,
+      range: `${this.quotedTab}!A2:N`,
       valueRenderOption: "UNFORMATTED_VALUE",
     });
     const rows = (res.data.values ?? []) as string[][];
@@ -277,12 +295,18 @@ export class GoogleSheetBookingStore implements BookingStore {
     const existing = rowToBooking(rows[offset].map((cell) => (cell == null ? "" : String(cell))));
     if (!existing) return null;
 
-    const updated: Booking = { ...existing, ...patch, note: patch.note || undefined };
+    const updated: Booking = {
+      ...existing,
+      ...patch,
+      note: patch.note || undefined,
+      equipmentNote: (patch.equipmentNote ?? existing.equipmentNote) || undefined,
+      onlineLinkNote: (patch.onlineLinkNote ?? existing.onlineLinkNote) || undefined,
+    };
     const rowNumber = offset + 2; // +1 for header, +1 for 1-based rows
 
     await this.sheets.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A${rowNumber}:J${rowNumber}`,
+      range: `${this.quotedTab}!A${rowNumber}:N${rowNumber}`,
       valueInputOption: "RAW",
       requestBody: { values: [bookingToRow(updated)] },
     });

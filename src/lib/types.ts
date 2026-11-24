@@ -14,6 +14,11 @@ export type Booking = {
   requesterName: string;
   requesterEmail: string;
   note?: string;
+  /** ความช่วยเหลือเพิ่มเติมสำหรับการประชุม */
+  needsEquipment?: boolean;
+  equipmentNote?: string;
+  needsOnlineLink?: boolean;
+  onlineLinkNote?: string;
   /** ISO timestamp */
   createdAt: string;
 };
@@ -21,6 +26,18 @@ export type Booking = {
 export type NewBooking = Omit<Booking, "id" | "createdAt" | "requesterName" | "requesterEmail"> & {
   requesterName: string;
   requesterEmail: string;
+};
+
+/** Fields a user (or admin) is allowed to change on an existing booking. */
+export type BookingEditFields = Pick<
+  Booking,
+  "roomId" | "date" | "startHour" | "endHour" | "title"
+> & {
+  note?: string;
+  needsEquipment?: boolean;
+  equipmentNote?: string;
+  needsOnlineLink?: boolean;
+  onlineLinkNote?: string;
 };
 
 export type SessionUser = {

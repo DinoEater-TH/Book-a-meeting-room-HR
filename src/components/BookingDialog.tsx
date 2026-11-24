@@ -49,6 +49,10 @@ type BookingValues = {
   endHour: number;
   title: string;
   note?: string;
+  needsEquipment: boolean;
+  equipmentNote?: string;
+  needsOnlineLink: boolean;
+  onlineLinkNote?: string;
 };
 
 type FormProps = {
@@ -60,6 +64,10 @@ type FormProps = {
   initialEndHour: number;
   initialTitle?: string;
   initialNote?: string;
+  initialNeedsEquipment?: boolean;
+  initialEquipmentNote?: string;
+  initialNeedsOnlineLink?: boolean;
+  initialOnlineLinkNote?: string;
   allBookings: Booking[];
   excludeId?: string;
   submitLabel: string;
@@ -68,6 +76,30 @@ type FormProps = {
   onSaved: (booking: Booking) => void;
   onClose: () => void;
 };
+
+function YesNoSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium text-slate-600">{label}</span>
+      <select
+        value={value ? "true" : "false"}
+        onChange={(event) => onChange(event.target.value === "true")}
+        className={inputClass}
+      >
+        <option value="false">ไม่ต้องการ</option>
+        <option value="true">ต้องการ</option>
+      </select>
+    </label>
+  );
+}
 
 function BookingForm({
   eyebrow,
@@ -78,6 +110,10 @@ function BookingForm({
   initialEndHour,
   initialTitle = "",
   initialNote = "",
+  initialNeedsEquipment = false,
+  initialEquipmentNote = "",
+  initialNeedsOnlineLink = false,
+  initialOnlineLinkNote = "",
   allBookings,
   excludeId,
   submitLabel,
@@ -92,6 +128,10 @@ function BookingForm({
   const [endHour, setEndHour] = useState(initialEndHour);
   const [title, setTitle] = useState(initialTitle);
   const [note, setNote] = useState(initialNote);
+  const [needsEquipment, setNeedsEquipment] = useState(initialNeedsEquipment);
+  const [equipmentNote, setEquipmentNote] = useState(initialEquipmentNote);
+  const [needsOnlineLink, setNeedsOnlineLink] = useState(initialNeedsOnlineLink);
+  const [onlineLinkNote, setOnlineLinkNote] = useState(initialOnlineLinkNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,6 +165,10 @@ function BookingForm({
         endHour,
         title: title.trim(),
         note: note.trim(),
+        needsEquipment,
+        equipmentNote: needsEquipment ? equipmentNote.trim() : "",
+        needsOnlineLink,
+        onlineLinkNote: needsOnlineLink ? onlineLinkNote.trim() : "",
       });
       onSaved(booking);
     } catch (caught) {
@@ -206,7 +250,7 @@ function BookingForm({
 
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-slate-600">
-              วัตถุประสงค์การใช้ห้อง <span className="text-rose-500">*</span>
+              ชื่อเรื่องที่จอง / วัตถุประสงค์การใช้ห้อง <span className="text-rose-500">*</span>
             </span>
             <input
               autoFocus
@@ -229,6 +273,54 @@ function BookingForm({
               className={`${inputClass} resize-none`}
             />
           </label>
+
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+            <p className="text-xs font-semibold text-slate-700">ความช่วยเหลือเพิ่มเติมสำหรับการประชุม</p>
+            <YesNoSelect
+              label="ต้องการใช้อุปกรณ์ในการประชุมหรือไม่?"
+              value={needsEquipment}
+              onChange={setNeedsEquipment}
+            />
+            {needsEquipment && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">ระบุอุปกรณ์ที่ต้องการ</span>
+                <textarea
+                  value={equipmentNote}
+                  onChange={(event) => setEquipmentNote(event.target.value)}
+                  placeholder="เช่น โปรเจคเตอร์, กระดานไวท์บอร์ด, อุปกรณ์ประชุมออนไลน์"
+                  rows={2}
+                  maxLength={500}
+                  className={`${inputClass} resize-none`}
+                />
+              </label>
+            )}
+
+            <YesNoSelect
+              label="ต้องการลิงก์สำหรับประชุมออนไลน์หรือไม่?"
+              value={needsOnlineLink}
+              onChange={setNeedsOnlineLink}
+            />
+            {needsOnlineLink && (
+              <>
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  เรื่องประชุม วันที่ และระยะเวลาการประชุมจะถูกส่งไปพร้อมคำขอโดยอัตโนมัติ
+                </p>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                    รายละเอียดเพิ่มเติม (ไม่บังคับ)
+                  </span>
+                  <textarea
+                    value={onlineLinkNote}
+                    onChange={(event) => setOnlineLinkNote(event.target.value)}
+                    placeholder="เช่น ต้องการลิงก์ Google Meet สำหรับผู้เข้าร่วมจากต่างจังหวัด"
+                    rows={2}
+                    maxLength={500}
+                    className={`${inputClass} resize-none`}
+                  />
+                </label>
+              </>
+            )}
+          </div>
 
           {conflict && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
@@ -343,6 +435,10 @@ function EditDialog({
       initialEndHour={booking.endHour}
       initialTitle={booking.title}
       initialNote={booking.note}
+      initialNeedsEquipment={booking.needsEquipment}
+      initialEquipmentNote={booking.equipmentNote}
+      initialNeedsOnlineLink={booking.needsOnlineLink}
+      initialOnlineLinkNote={booking.onlineLinkNote}
       allBookings={allBookings}
       excludeId={booking.id}
       submitLabel="บันทึกการแก้ไข"
@@ -400,6 +496,29 @@ function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelle
     }
   }
 
+  const details: [string, string][] = [
+    ["ห้องประชุม", room.name],
+    ["วันที่", formatThaiDate(booking.date, { weekday: true })],
+    ["เวลา", `${rangeLabel(booking.startHour, booking.endHour)} น.`],
+    ["ผู้ขอใช้ห้อง", booking.requesterName],
+    ...(booking.requesterEmail && booking.requesterEmail !== "legacy@imported.local"
+      ? ([["อีเมล", booking.requesterEmail]] as [string, string][])
+      : []),
+    ...(booking.note ? ([["หมายเหตุ", booking.note]] as [string, string][]) : []),
+    [
+      "อุปกรณ์",
+      booking.needsEquipment
+        ? `ต้องการ${booking.equipmentNote ? ` · ${booking.equipmentNote}` : ""}`
+        : "ไม่ต้องการ",
+    ],
+    [
+      "ลิงก์ประชุมออนไลน์",
+      booking.needsOnlineLink
+        ? `ต้องการ${booking.onlineLinkNote ? ` · ${booking.onlineLinkNote}` : ""}`
+        : "ไม่ต้องการ",
+    ],
+  ];
+
   return (
     <ModalShell onClose={onClose}>
       <div>
@@ -412,14 +531,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelle
         </div>
 
         <dl className="mt-6 divide-y divide-slate-100 rounded-xl border border-slate-100">
-          {[
-            ["ห้องประชุม", room.name],
-            ["วันที่", formatThaiDate(booking.date, { weekday: true })],
-            ["เวลา", `${rangeLabel(booking.startHour, booking.endHour)} น.`],
-            ["ผู้ขอใช้ห้อง", booking.requesterName],
-            ["อีเมล", booking.requesterEmail],
-            ...(booking.note ? [["หมายเหตุ", booking.note]] : []),
-          ].map(([label, value]) => (
+          {details.map(([label, value]) => (
             <div key={label} className="grid grid-cols-[110px_1fr] gap-3 px-4 py-3 text-sm">
               <dt className="text-slate-500">{label}</dt>
               <dd className="break-words font-medium text-slate-800">{value}</dd>

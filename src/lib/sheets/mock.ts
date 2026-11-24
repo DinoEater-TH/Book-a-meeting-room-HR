@@ -53,7 +53,14 @@ export class MockBookingStore implements BookingStore {
     const all = await readAll();
     const index = all.findIndex((booking) => booking.id === id);
     if (index === -1) return null;
-    const updated: Booking = { ...all[index], ...patch, note: patch.note || undefined };
+    const existing = all[index];
+    const updated: Booking = {
+      ...existing,
+      ...patch,
+      note: patch.note || undefined,
+      equipmentNote: (patch.equipmentNote ?? existing.equipmentNote) || undefined,
+      onlineLinkNote: (patch.onlineLinkNote ?? existing.onlineLinkNote) || undefined,
+    };
     all[index] = updated;
     await writeAll(all);
     return updated;
