@@ -6,6 +6,8 @@ export type Room = {
   shortName: string;
   capacity: string;
   location: string;
+  /** Optional room logo shown instead of the initials badge */
+  logo?: string;
   /** Tailwind colour tokens used by the board */
   accent: {
     bg: string;
@@ -37,6 +39,7 @@ export const ROOMS: Room[] = [
     shortName: "SMART Meeting",
     capacity: "6 ที่นั่ง",
     location: "กองทรัพยากรบุคคล",
+    logo: "/smart-hr.png",
     accent: {
       bg: "bg-indigo-600",
       bgSoft: "bg-indigo-50",

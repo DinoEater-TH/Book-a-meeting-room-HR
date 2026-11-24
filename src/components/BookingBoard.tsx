@@ -276,14 +276,16 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
                   <span>ผู้จอง</span>
                   <span />
                 </div>
-                {upcomingBookings.map((booking) => {
+                {upcomingBookings.map((booking, index) => {
                   const room = getRoom(booking.roomId);
                   return (
                     <button
                       key={booking.id}
                       type="button"
                       onClick={() => setDialog({ type: "detail", booking })}
-                      className="flex flex-col gap-2 px-5 py-4 text-left transition hover:bg-slate-50 sm:grid sm:grid-cols-[112px_118px_1fr_170px_20px] sm:items-center sm:gap-4"
+                      className={`flex flex-col gap-2 px-5 py-4 text-left transition hover:bg-emerald-50/70 sm:grid sm:grid-cols-[112px_118px_1fr_170px_20px] sm:items-center sm:gap-4 ${
+                        index % 2 === 1 ? "bg-emerald-50/40" : "bg-white"
+                      }`}
                     >
                       <div>
                         <p className="text-sm font-semibold text-slate-800">

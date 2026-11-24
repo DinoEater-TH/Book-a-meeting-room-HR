@@ -58,9 +58,18 @@ export default function RoomTimeline({ room, bookings, isMine, onSlotClick, onBo
       <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${room.accent.bg}`}>
-              {room.id === "room10" ? "10" : "SM"}
-            </span>
+            {room.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={room.logo}
+                alt={`โลโก้${room.name}`}
+                className="size-9 shrink-0 object-contain"
+              />
+            ) : (
+              <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${room.accent.bg}`}>
+                {room.id === "room10" ? "10" : "SM"}
+              </span>
+            )}
             <h2 className="truncate text-base font-semibold text-slate-900">{room.name}</h2>
           </div>
           <p className="mt-1.5 pl-[46px] text-xs text-slate-500">
