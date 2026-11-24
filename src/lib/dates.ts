@@ -61,8 +61,38 @@ export function parseISODate(iso: string): Date {
   return new Date(y, m - 1, d, 12, 0, 0, 0);
 }
 
+/** The app is used in Thailand; never rely on the host machine's time zone. */
+const THAILAND_TIME_ZONE = "Asia/Bangkok";
+
+export function bangkokNow(): { date: string; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: THAILAND_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  const hour = Number(part("hour"));
+  return {
+    date: `${part("year")}-${part("month")}-${part("day")}`,
+    hour: Number.isFinite(hour) ? hour : 0,
+  };
+}
+
 export function todayISO(): string {
-  return toISODate(new Date());
+  return bangkokNow().date;
+}
+
+/** True when a slot's start hour has already begun in Thailand. */
+export function isPastSlot(date: string, startHour: number): boolean {
+  if (!isISODate(date)) return false;
+  const now = bangkokNow();
+  if (date < now.date) return true;
+  if (date > now.date) return false;
+  return startHour <= now.hour;
 }
 
 export function addDays(iso: string, days: number): string {

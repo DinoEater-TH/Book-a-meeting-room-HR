@@ -36,11 +36,6 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       return NextResponse.json({ error: "ข้อมูล JSON ไม่ถูกต้อง" }, { status: 400 });
     }
 
-    const parsed = parseBookingInput(body);
-    if (!parsed.ok) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
-    }
-
     const store = getBookingStore();
     const all = await store.list();
     const booking = all.find((item) => item.id === id);
@@ -56,6 +51,18 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       admin;
     if (!canEdit) {
       return NextResponse.json({ error: "คุณสามารถแก้ไขได้เฉพาะรายการของตนเอง" }, { status: 403 });
+    }
+
+    // A past booking may keep its original slot (e.g. admin adding a link),
+    // but no one may move a booking back into the past.
+    const raw = (body ?? {}) as Record<string, unknown>;
+    const keepPastSlot =
+      raw.date === booking.date &&
+      Number(raw.startHour) === booking.startHour &&
+      Number(raw.endHour) === booking.endHour;
+    const parsed = parseBookingInput(body, { allowPast: keepPastSlot });
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
     // Only pongka@kku.ac.th may add or change the meeting link.

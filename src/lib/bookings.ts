@@ -1,5 +1,5 @@
 import type { Booking, NewBooking, RoomId } from "./types";
-import { isISODate } from "./dates";
+import { isISODate, isPastSlot } from "./dates";
 import { isRoomId } from "./rooms";
 import { isValidSlotRange } from "./types";
 
@@ -47,7 +47,14 @@ function parseYesNo(value: unknown): boolean {
 }
 
 
-export function parseBookingInput(body: unknown): ParseResult {
+/**
+ * `allowPast` is only for edits that keep an existing past slot unchanged
+ * (e.g. an admin adding a meeting link to an imported booking).
+ */
+export function parseBookingInput(
+  body: unknown,
+  options: { allowPast?: boolean } = {},
+): ParseResult {
   if (!body || typeof body !== "object") {
     return { ok: false, error: "ข้อมูลไม่ถูกต้อง" };
   }
@@ -64,6 +71,9 @@ export function parseBookingInput(body: unknown): ParseResult {
   const endHour = Number(raw.endHour);
   if (!isValidSlotRange(startHour, endHour)) {
     return { ok: false, error: "ช่วงเวลาไม่ถูกต้อง (08:00 – 24:00)" };
+  }
+  if (!options.allowPast && isPastSlot(date, startHour)) {
+    return { ok: false, error: "ไม่สามารถจองเวลาที่ผ่านไปแล้วได้ กรุณาเลือกวันที่และเวลาใหม่" };
   }
 
   const title = typeof raw.title === "string" ? raw.title.trim() : "";

@@ -174,10 +174,13 @@ export default function UpcomingCalendar({
             <div
               key={iso}
               role="button"
-              tabIndex={0}
-              aria-label={`${formatThaiDate(iso, { weekday: true })} มี ${list.length} รายการจอง · คลิกเพื่อจอง`}
-              onClick={() => onDayClick(iso)}
+              tabIndex={isPast ? -1 : 0}
+              aria-label={`${formatThaiDate(iso, { weekday: true })} มี ${list.length} รายการจอง${isPast ? "" : " · คลิกเพื่อจอง"}`}
+              onClick={() => {
+                if (!isPast) onDayClick(iso);
+              }}
               onKeyDown={(event) => {
+                if (isPast) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   onDayClick(iso);

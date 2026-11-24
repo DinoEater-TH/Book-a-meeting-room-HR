@@ -6,6 +6,7 @@ import { ROOMS, getRoom } from "@/lib/rooms";
 import {
   addDays,
   formatThaiDate,
+  isPastSlot,
   relativeDayLabel,
   todayISO,
   weekdayName,
@@ -271,9 +272,13 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
                 <RoomTimeline
                   key={room.id}
                   room={room}
+                  date={date}
                   bookings={dayBookings.filter((booking) => booking.roomId === room.id)}
                   paletteByEmail={paletteByEmail}
-                  onSlotClick={(roomId, hour) => setDialog({ type: "create", roomId, hour })}
+                  onSlotClick={(roomId, hour) => {
+                    if (isPastSlot(date, hour)) return;
+                    setDialog({ type: "create", roomId, hour });
+                  }}
                   onBookingClick={(booking) => setDialog({ type: "detail", booking })}
                 />
               ))}
@@ -285,6 +290,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             paletteByEmail={paletteByEmail}
             onBookingClick={(booking) => setDialog({ type: "detail", booking })}
             onDayClick={(selectedDate) => {
+              if (selectedDate < todayISO()) return;
               setDate(selectedDate);
               setDialog({ type: "create", roomId: "room10", hour: 8 });
             }}

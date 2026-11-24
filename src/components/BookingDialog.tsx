@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import type { Booking, RoomId } from "@/lib/types";
 import { CLOSE_HOUR, OPEN_HOUR, overlaps, SLOT_HOURS } from "@/lib/types";
 import { isLegacyBooking, isUnnamedBooking } from "@/lib/bookings";
-import { formatThaiDate, hourLabel, rangeLabel } from "@/lib/dates";
+import { formatThaiDate, hourLabel, isPastSlot, rangeLabel, todayISO } from "@/lib/dates";
 import { ROOMS, type Room } from "@/lib/rooms";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20";
 
-const EQUIPMENT_OPTIONS = ["Smart TV", "ไมโคโฟน", "Pointer", "กล้อง webcam", "อื่นๆ"] as const;
+const EQUIPMENT_OPTIONS = ["Smart TV", "ไมโคโฟน", "Pointer", "กล้อง webcam"] as const;
 type EquipmentOption = (typeof EQUIPMENT_OPTIONS)[number];
 
 /** Older bookings used Thai/short labels; map them to the current wording. */
@@ -29,11 +29,10 @@ const EQUIPMENT_ALIASES: Record<string, string> = {
   "webcam": "กล้อง webcam",
   "กล้อง webcam": "กล้อง webcam",
   "camera": "กล้อง webcam",
-  "อื่นๆ": "อื่นๆ",
-  "อื่น ๆ": "อื่นๆ",
-  "other": "อื่นๆ",
-  "others": "อื่นๆ",
 };
+
+/** Old free-text placeholders from the removed "อื่นๆ" option are not equipment. */
+const EQUIPMENT_IGNORED = new Set(["อื่นๆ", "อื่น ๆ", "other", "others"]);
 
 function splitEquipment(value?: string): { choices: string[]; other: string } {
   if (!value?.trim()) return { choices: [], other: "" };
@@ -42,25 +41,21 @@ function splitEquipment(value?: string): { choices: string[]; other: string } {
 
   for (const raw of value.split(/[,،]/)) {
     const token = raw.trim();
-    if (!token) continue;
+    if (!token || EQUIPMENT_IGNORED.has(token.toLowerCase())) continue;
     const mapped = EQUIPMENT_ALIASES[token.toLowerCase()] ?? EQUIPMENT_ALIASES[token];
-    if (mapped === "อื่นๆ") continue;
     if (mapped) {
       if (!choices.includes(mapped)) choices.push(mapped);
-      continue;
+    } else if (!others.includes(token)) {
+      others.push(token);
     }
-    if (!others.includes(token)) others.push(token);
   }
-  if (others.length && !choices.includes("อื่นๆ")) choices.push("อื่นๆ");
   return { choices, other: others.join(", ") };
 }
 
 function serializeEquipment(choices: string[], other: string): string | undefined {
   const extra = other.trim();
-  const parts = choices.map((choice) =>
-    choice === "อื่นๆ" ? extra || "อื่นๆ" : choice,
-  );
-  if (extra && !choices.includes("อื่นๆ")) parts.push(extra);
+  const parts = [...choices];
+  if (extra) parts.push(extra);
   return parts.length > 0 ? parts.join(", ") : undefined;
 }
 
@@ -133,6 +128,8 @@ type FormProps = {
   onSaved: (booking: Booking) => void;
   onClose: () => void;
   onBusyChange?: (message: string | null) => void;
+  /** Editing an existing past booking may keep its original slot. */
+  allowPast?: boolean;
 };
 
 function YesNoSelect({
@@ -181,6 +178,7 @@ function BookingForm({
   onSaved,
   onClose,
   onBusyChange,
+  allowPast = false,
 }: FormProps) {
   const [roomId, setRoomId] = useState<RoomId>(initialRoomId);
   const [date, setDate] = useState(initialDate);
@@ -204,10 +202,28 @@ function BookingForm({
     [allBookings, excludeId, roomId, date, startHour, endHour],
   );
 
+  const pastSlot = isPastSlot(date, startHour);
+  const keepExistingPast =
+    allowPast &&
+    date === initialDate &&
+    startHour === initialHour &&
+    endHour === initialEndHour;
+  const blockedPast = pastSlot && !keepExistingPast;
+
+  const startHours = useMemo(() => {
+    const hours = SLOT_HOURS.filter((hour) => !isPastSlot(date, hour));
+    if (allowPast && pastSlot && !hours.includes(startHour)) hours.push(startHour);
+    return hours.sort((a, b) => a - b);
+  }, [date, startHour, allowPast, pastSlot]);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
 
+    if (blockedPast) {
+      setError("ไม่สามารถจองเวลาที่ผ่านไปแล้วได้ กรุณาเลือกวันที่และเวลาใหม่");
+      return;
+    }
     if (!title.trim()) {
       setError("กรุณากรอกวัตถุประสงค์การใช้ห้อง");
       return;
@@ -278,7 +294,18 @@ function BookingForm({
               <input
                 type="date"
                 value={date}
-                onChange={(event) => event.target.value && setDate(event.target.value)}
+                min={allowPast ? undefined : todayISO()}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (!value) return;
+                  setDate(value);
+                  if (allowPast || !isPastSlot(value, startHour)) return;
+                  const first = SLOT_HOURS.find((hour) => !isPastSlot(value, hour));
+                  if (first !== undefined) {
+                    setStartHour(first);
+                    setEndHour(first + 1);
+                  }
+                }}
                 className={inputClass}
               />
             </label>
@@ -296,7 +323,10 @@ function BookingForm({
                 }}
                 className={inputClass}
               >
-                {SLOT_HOURS.map((hour) => (
+                {startHours.length === 0 && (
+                  <option value={startHour}>{hourLabel(startHour)}</option>
+                )}
+                {startHours.map((hour) => (
                   <option key={hour} value={hour}>
                     {hourLabel(hour)}
                   </option>
@@ -383,13 +413,7 @@ function BookingForm({
                 </span>
                 <input
                   value={equipmentOther}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setEquipmentOther(value);
-                    if (value.trim() && !equipmentChoices.includes("อื่นๆ")) {
-                      setEquipmentChoices((current) => [...current, "อื่นๆ"]);
-                    }
-                  }}
+                  onChange={(event) => setEquipmentOther(event.target.value)}
                   placeholder="เช่น กระดานไวท์บอร์ด, สาย HDMI"
                   maxLength={500}
                   className={inputClass}
@@ -427,6 +451,11 @@ function BookingForm({
             )}
           </div>
 
+          {blockedPast && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
+              ไม่สามารถจองเวลาที่ผ่านไปแล้วได้ กรุณาเลือกวันที่และเวลาใหม่
+            </div>
+          )}
           {conflict && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
               <strong className="font-semibold">ช่วงเวลาทับกัน:</strong> {conflict.title} ·{" "}
@@ -449,7 +478,7 @@ function BookingForm({
             </button>
             <button
               type="submit"
-              disabled={submitting || Boolean(conflict)}
+              disabled={submitting || Boolean(conflict) || blockedPast}
               className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? busyLabel : submitLabel}
@@ -560,6 +589,7 @@ function EditDialog({
       onClose={onClose}
       onSaved={onUpdated}
       onBusyChange={onBusyChange}
+      allowPast
       onSubmit={async (values) =>
         readResponse(
           await fetch(`/api/bookings/${booking.id}`, {

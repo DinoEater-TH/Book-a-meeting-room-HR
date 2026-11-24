@@ -2,7 +2,7 @@
 
 import type { Booking, RoomId } from "@/lib/types";
 import { SLOT_HOURS, OPEN_HOUR, CLOSE_HOUR } from "@/lib/types";
-import { hourLabel, rangeLabel } from "@/lib/dates";
+import { hourLabel, isPastSlot, rangeLabel } from "@/lib/dates";
 import { paletteForEmail, type BookingPalette } from "@/lib/colors";
 import type { Room } from "@/lib/rooms";
 
@@ -10,6 +10,7 @@ const SLOT_HEIGHT = 46;
 
 type Props = {
   room: Room;
+  date?: string;
   bookings: Booking[];
   paletteByEmail: Record<string, BookingPalette>;
   onSlotClick: (roomId: RoomId, hour: number) => void;
@@ -18,7 +19,7 @@ type Props = {
 
 type PlacedBooking = { booking: Booking; column: number; columns: number };
 
-export default function RoomTimeline({ room, bookings, paletteByEmail, onSlotClick, onBookingClick }: Props) {
+export default function RoomTimeline({ room, date, bookings, paletteByEmail, onSlotClick, onBookingClick }: Props) {
   const ordered = [...bookings].sort((a, b) => a.startHour - b.startHour || b.endHour - a.endHour);
 
   // Imported legacy rows can overlap. Lay them out side by side so none is hidden.
@@ -51,6 +52,7 @@ export default function RoomTimeline({ room, bookings, paletteByEmail, onSlotCli
     const offset = event.clientY - rect.top;
     const index = Math.floor(offset / SLOT_HEIGHT);
     const hour = OPEN_HOUR + Math.max(0, Math.min(SLOT_HOURS.length - 1, index));
+    if (date && isPastSlot(date, hour)) return;
     onSlotClick(room.id, hour);
   }
 
@@ -102,13 +104,22 @@ export default function RoomTimeline({ room, bookings, paletteByEmail, onSlotCli
             onClick={handleGridClick}
             className="relative flex-1 cursor-crosshair overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80"
           >
-            {SLOT_HOURS.map((hour) => (
-              <div
-                key={hour}
-                style={{ height: SLOT_HEIGHT }}
-                className={`border-b border-dashed border-slate-200 last:border-b-0 ${hour % 2 === 0 ? "bg-white/40" : ""}`}
-              />
-            ))}
+            {SLOT_HOURS.map((hour) => {
+              const past = Boolean(date && isPastSlot(date, hour));
+              return (
+                <div
+                  key={hour}
+                  style={{ height: SLOT_HEIGHT }}
+                  className={`border-b border-dashed last:border-b-0 ${
+                    past
+                      ? "border-slate-100 bg-slate-100/80"
+                      : hour % 2 === 0
+                        ? "border-slate-200 bg-white/40"
+                        : "border-slate-200"
+                  }`}
+                />
+              );
+            })}
 
             {placed.map(({ booking, column, columns }) => {
               const top = (booking.startHour - OPEN_HOUR) * SLOT_HEIGHT;
