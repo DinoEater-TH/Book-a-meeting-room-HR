@@ -1,9 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
-import { requireUser, UnauthorizedError } from "@/lib/auth";
+import { isAdmin, requireUser, UnauthorizedError } from "@/lib/auth";
 import { parseBookingInput, toNewBooking } from "@/lib/bookings";
 import { isISODate, monthRange, todayISO } from "@/lib/dates";
+import { notifyMeetingSupport } from "@/lib/notify";
 import { getBookingStore } from "@/lib/sheets";
+import { logUsage } from "@/lib/usage-log";
 import { overlaps } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +62,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
+    // Only pongka@kku.ac.th may add a meeting link.
+    if (!isAdmin(user.email)) parsed.value.meetingLink = undefined;
+
     const store = getBookingStore();
     const sameDay = await store.list({ from: parsed.value.date, to: parsed.value.date });
     const conflict = sameDay.find((booking) => overlaps(booking, parsed.value));
@@ -73,6 +78,13 @@ export async function POST(request: NextRequest) {
     }
 
     const booking = await store.create(toNewBooking(parsed.value, user));
+    await notifyMeetingSupport(booking, "created");
+    await logUsage({
+      email: user.email,
+      name: user.name,
+      action: "สร้างการจอง",
+      detail: `${booking.title} · ${booking.date} ${String(booking.startHour).padStart(2, "0")}:00–${String(booking.endHour).padStart(2, "0")}:00`,
+    });
     revalidatePath("/book");
 
     return NextResponse.json({ booking }, { status: 201 });

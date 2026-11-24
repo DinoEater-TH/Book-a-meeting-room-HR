@@ -60,6 +60,7 @@ export class MockBookingStore implements BookingStore {
       note: patch.note || undefined,
       equipmentNote: (patch.equipmentNote ?? existing.equipmentNote) || undefined,
       onlineLinkNote: (patch.onlineLinkNote ?? existing.onlineLinkNote) || undefined,
+      meetingLink: (patch.meetingLink ?? existing.meetingLink) || undefined,
     };
     all[index] = updated;
     await writeAll(all);

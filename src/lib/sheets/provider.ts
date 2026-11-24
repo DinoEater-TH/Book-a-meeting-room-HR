@@ -27,6 +27,7 @@ export const SHEET_COLUMNS = [
   "equipmentNote",
   "needsOnlineLink",
   "onlineLinkNote",
+  "meetingLink",
 ] as const;
 
 function parseBool(value: string | undefined): boolean {
@@ -37,6 +38,7 @@ export function rowToBooking(row: string[]): Booking | null {
   const [
     id, roomId, date, startHour, endHour, title, requesterName, requesterEmail,
     note, createdAt, needsEquipment, equipmentNote, needsOnlineLink, onlineLinkNote,
+    meetingLink,
   ] = row;
   if (!id || !roomId || !date) return null;
   const start = Number(startHour);
@@ -57,6 +59,7 @@ export function rowToBooking(row: string[]): Booking | null {
     equipmentNote: equipmentNote || undefined,
     needsOnlineLink: parseBool(needsOnlineLink),
     onlineLinkNote: onlineLinkNote || undefined,
+    meetingLink: meetingLink || undefined,
   };
 }
 
@@ -76,6 +79,7 @@ export function bookingToRow(booking: Booking): string[] {
     booking.equipmentNote ?? "",
     String(Boolean(booking.needsOnlineLink)),
     booking.onlineLinkNote ?? "",
+    booking.meetingLink ?? "",
   ];
 }
 

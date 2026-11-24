@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import { SPREADSHEET_ID } from "../config";
-import type { Booking, NewBooking } from "../types";
+import { CLOSE_HOUR, OPEN_HOUR, type Booking, type NewBooking } from "../types";
 import {
   bookingToRow,
   newId,
@@ -68,7 +68,7 @@ export class GoogleSheetBookingStore implements BookingStore {
       // columns are labelled without touching any existing booking rows.
       const headerRes = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `${this.quotedTab}!A1:N1`,
+        range: `${this.quotedTab}!A1:O1`,
       });
       const currentHeader = (headerRes.data.values?.[0] ?? []).map((cell) => String(cell ?? ""));
       if (
@@ -108,7 +108,7 @@ export class GoogleSheetBookingStore implements BookingStore {
 
     const res = await this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A2:N`,
+      range: `${this.quotedTab}!A2:O`,
       valueRenderOption: "UNFORMATTED_VALUE",
     });
 
@@ -140,7 +140,7 @@ export class GoogleSheetBookingStore implements BookingStore {
     const monthPrefix = isoDate.slice(0, 7);
     const bookings = (await this.list()).filter((booking) => booking.date.startsWith(monthPrefix));
     const [year] = isoDate.split("-").map(Number);
-    const hours = Array.from({ length: 10 }, (_, i) => 8 + i);
+    const hours = Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, i) => OPEN_HOUR + i);
     const rooms = [
       { id: "room10" as const, name: "ห้องประชุมกาลพฤกษ์ 10" },
       { id: "smart" as const, name: "ห้อง SMART Meeting" },
@@ -159,14 +159,14 @@ export class GoogleSheetBookingStore implements BookingStore {
         .filter((booking) => booking.roomId === room.id)
         .sort((a, b) => a.date.localeCompare(b.date) || a.startHour - b.startHour);
       for (const booking of rows) {
-        const cells = Array(14).fill("");
+        const cells = Array(2 + hours.length + 2).fill("");
         cells[0] = booking.date;
         cells[1] = booking.title;
-        cells[12] = booking.requesterName;
-        cells[13] = booking.note ?? "";
+        cells[cells.length - 2] = booking.requesterName;
+        cells[cells.length - 1] = booking.note ?? "";
         for (const hour of hours) {
           if (hour >= booking.startHour && hour < booking.endHour) {
-            const column = 2 + (hour - 8);
+            const column = 2 + (hour - OPEN_HOUR);
             cells[column] = "●";
             shaded.push({ row: cursor, column });
           }
@@ -285,7 +285,7 @@ export class GoogleSheetBookingStore implements BookingStore {
 
     const res = await this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A2:N`,
+      range: `${this.quotedTab}!A2:O`,
       valueRenderOption: "UNFORMATTED_VALUE",
     });
     const rows = (res.data.values ?? []) as string[][];
@@ -301,12 +301,13 @@ export class GoogleSheetBookingStore implements BookingStore {
       note: patch.note || undefined,
       equipmentNote: (patch.equipmentNote ?? existing.equipmentNote) || undefined,
       onlineLinkNote: (patch.onlineLinkNote ?? existing.onlineLinkNote) || undefined,
+      meetingLink: (patch.meetingLink ?? existing.meetingLink) || undefined,
     };
     const rowNumber = offset + 2; // +1 for header, +1 for 1-based rows
 
     await this.sheets.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A${rowNumber}:N${rowNumber}`,
+      range: `${this.quotedTab}!A${rowNumber}:O${rowNumber}`,
       valueInputOption: "RAW",
       requestBody: { values: [bookingToRow(updated)] },
     });

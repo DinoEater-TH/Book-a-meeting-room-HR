@@ -26,11 +26,11 @@ export const ROOMS: Room[] = [
     capacity: "10 ที่นั่ง",
     location: "กองทรัพยากรบุคคล",
     accent: {
-      bg: "bg-emerald-600",
-      bgSoft: "bg-emerald-50",
-      border: "border-emerald-200",
-      text: "text-emerald-700",
-      ring: "ring-emerald-500",
+      bg: "bg-orange-600",
+      bgSoft: "bg-orange-50",
+      border: "border-orange-200",
+      text: "text-orange-700",
+      ring: "ring-orange-500",
     },
   },
   {

@@ -45,7 +45,7 @@ const ROOMS = [
   { id: "room10", name: "ห้องประชุมกาลพฤกษ์ 10" },
   { id: "smart", name: "ห้อง SMART Meeting" },
 ];
-const HOURS = Array.from({ length: 10 }, (_, i) => 8 + i); // 08:00–17:00
+const HOURS = Array.from({ length: 16 }, (_, i) => 8 + i); // 08:00–23:00 (จองได้ถึง 24:00)
 const PINK = { red: 244 / 255, green: 204 / 255, blue: 204 / 255 };
 const LIGHT_GRAY = { red: 217 / 255, green: 217 / 255, blue: 217 / 255 };
 
@@ -95,11 +95,11 @@ function buildValues(monthBookings, label) {
       .sort((a, b) => a.date.localeCompare(b.date) || a.startHour - b.startHour);
 
     for (const booking of rows) {
-      const cells = Array(14).fill("");
+      const cells = Array(2 + HOURS.length + 2).fill("");
       cells[0] = booking.date;
       cells[1] = booking.title || "";
-      cells[12] = booking.requesterName || "";
-      cells[13] = booking.note || "";
+      cells[cells.length - 2] = booking.requesterName || "";
+      cells[cells.length - 1] = booking.note || "";
       for (const hour of HOURS) {
         if (hour >= booking.startHour && hour < booking.endHour) {
           cells[2 + (hour - 8)] = "●";
@@ -199,7 +199,7 @@ if (dryRun) {
     const requests = [
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 14 },
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 + HOURS.length + 2 },
           cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 12 } } },
           fields: "userEnteredFormat.textFormat",
         },
@@ -210,7 +210,7 @@ if (dryRun) {
     for (const room of ROOMS) {
       requests.push({
         repeatCell: {
-          range: { sheetId, startRowIndex: offset + 1, endRowIndex: offset + 2, startColumnIndex: 0, endColumnIndex: 14 },
+          range: { sheetId, startRowIndex: offset + 1, endRowIndex: offset + 2, startColumnIndex: 0, endColumnIndex: 2 + HOURS.length + 2 },
           cell: { userEnteredFormat: { backgroundColor: LIGHT_GRAY, textFormat: { bold: true } } },
           fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
         },

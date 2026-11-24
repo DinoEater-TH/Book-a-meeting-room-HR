@@ -12,6 +12,8 @@ import {
 } from "@/lib/dates";
 import RoomTimeline from "./RoomTimeline";
 import BookingDialog from "./BookingDialog";
+import UpcomingCalendar from "./UpcomingCalendar";
+import { buildPaletteByEmail } from "@/lib/colors";
 
 type DialogState =
   | { type: "create"; roomId: RoomId; hour: number }
@@ -67,6 +69,11 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
   const isMine = (booking: Booking) =>
     booking.requesterEmail.toLowerCase() === user.email.toLowerCase();
 
+  const paletteByEmail = useMemo(
+    () => buildPaletteByEmail(upcomingBookings.map((booking) => booking.requesterEmail)),
+    [upcomingBookings],
+  );
+
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 3500);
@@ -88,6 +95,16 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
     setBookings((current) => current.map((booking) => (booking.id === updated.id ? updated : booking)));
     setDialog(null);
     showToast("แก้ไขการจองเรียบร้อยแล้ว");
+  }
+
+  function handleLinkSaved(updated: Booking) {
+    setBookings((current) => current.map((booking) => (booking.id === updated.id ? updated : booking)));
+    setDialog((current) =>
+      current?.type === "detail" && current.booking.id === updated.id
+        ? { ...current, booking: updated }
+        : current,
+    );
+    showToast("บันทึก ลิงก์การประชุมเรียบร้อยแล้ว");
   }
 
   const initials = user.name.trim().slice(0, 1).toUpperCase() || "U";
@@ -112,6 +129,14 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           </div>
 
           <div className="flex items-center gap-3">
+            {isAdminUser && (
+              <a
+                href="/log"
+                className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-orange-50 hover:text-orange-700"
+              >
+                ประวัติการใช้งาน
+              </a>
+            )}
             <div className="flex items-center gap-2 border-slate-200 pl-3 sm:border-l">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
                 {initials}
@@ -148,7 +173,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
                 {formatThaiDate(date, { weekday: true })}
               </h2>
               {relativeDayLabel(date) && (
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
                   {relativeDayLabel(date)}
                 </span>
               )}
@@ -169,7 +194,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
               type="date"
               value={date}
               onChange={(event) => event.target.value && setDate(event.target.value)}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               aria-label="เลือกวันที่"
             />
             <button
@@ -196,7 +221,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             onClick={() => setTab("board")}
             className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "board"
-                ? "border-emerald-600 text-emerald-700"
+                ? "border-orange-600 text-orange-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -207,7 +232,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             onClick={() => setTab("upcoming")}
             className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "upcoming"
-                ? "border-emerald-600 text-emerald-700"
+                ? "border-orange-600 text-orange-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -218,7 +243,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             onClick={() => setTab("mine")}
             className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "mine"
-                ? "border-emerald-600 text-emerald-700"
+                ? "border-orange-600 text-orange-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -230,13 +255,12 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           <>
             <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded border border-slate-200 bg-white" /> ว่าง
+                <span className="size-3 rounded border border-slate-200 bg-white" /> ช่องว่าง
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded border border-emerald-300 bg-emerald-50" /> การจองของฉัน
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded border border-slate-200 bg-white shadow-sm" /> การจองของผู้อื่น
+                <span className="size-3 rounded border border-orange-200 bg-orange-50" />
+                <span className="size-3 rounded border border-sky-200 bg-sky-50 -ml-1" />
+                <span className="size-3 rounded border border-violet-200 bg-violet-50 -ml-1" /> สีแยกตามอีเมลผู้จอง
               </span>
             </div>
 
@@ -246,7 +270,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
                   key={room.id}
                   room={room}
                   bookings={dayBookings.filter((booking) => booking.roomId === room.id)}
-                  isMine={isMine}
+                  paletteByEmail={paletteByEmail}
                   onSlotClick={(roomId, hour) => setDialog({ type: "create", roomId, hour })}
                   onBookingClick={(booking) => setDialog({ type: "detail", booking })}
                 />
@@ -254,77 +278,11 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             </div>
           </>
         ) : tab === "upcoming" ? (
-          <section className="card divide-y divide-slate-100 overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
-              <div>
-                <h2 className="font-semibold text-slate-900">รายการจองล่วงหน้า</h2>
-                <p className="mt-0.5 text-xs text-slate-400">วันนี้เป็นต้นไป · ทุกห้องประชุม</p>
-              </div>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                {upcomingBookings.length} รายการ
-              </span>
-            </div>
-
-            {upcomingBookings.length === 0 ? (
-              <p className="px-5 py-12 text-center text-sm text-slate-400">ยังไม่มีรายการจองล่วงหน้า</p>
-            ) : (
-              <>
-                <div className="hidden grid-cols-[112px_118px_1fr_170px_20px] gap-4 border-b border-slate-100 px-5 py-2.5 text-[11px] font-semibold text-slate-400 sm:grid">
-                  <span>วันที่</span>
-                  <span>เวลา</span>
-                  <span>ชื่อเรื่องที่จอง</span>
-                  <span>ผู้จอง</span>
-                  <span />
-                </div>
-                {upcomingBookings.map((booking, index) => {
-                  const room = getRoom(booking.roomId);
-                  return (
-                    <button
-                      key={booking.id}
-                      type="button"
-                      onClick={() => setDialog({ type: "detail", booking })}
-                      className={`flex flex-col gap-2 px-5 py-4 text-left transition hover:bg-emerald-50/70 sm:grid sm:grid-cols-[112px_118px_1fr_170px_20px] sm:items-center sm:gap-4 ${
-                        index % 2 === 1 ? "bg-emerald-50/40" : "bg-white"
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">
-                          {formatThaiDate(booking.date, { short: true })}
-                        </p>
-                        <p className="text-[11px] text-slate-400">วัน{weekdayName(booking.date)}</p>
-                      </div>
-                      <p className="text-sm tabular-nums text-slate-700">{timeLabel(booking)}</p>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800">{booking.title}</p>
-                        <p className="truncate text-xs text-slate-400">{room?.shortName}</p>
-                        {(booking.needsEquipment || booking.needsOnlineLink) && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {booking.needsEquipment && (
-                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                                ต้องการอุปกรณ์
-                              </span>
-                            )}
-                            {booking.needsOnlineLink && (
-                              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700">
-                                ต้องการลิงก์ออนไลน์
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm text-slate-700">{booking.requesterName}</p>
-                        {booking.requesterEmail !== "legacy@imported.local" && (
-                          <p className="truncate text-[11px] text-slate-400">{booking.requesterEmail}</p>
-                        )}
-                      </div>
-                      <span className="hidden text-slate-300 sm:block">›</span>
-                    </button>
-                  );
-                })}
-              </>
-            )}
-          </section>
+          <UpcomingCalendar
+            bookings={upcomingBookings}
+            paletteByEmail={paletteByEmail}
+            onBookingClick={(booking) => setDialog({ type: "detail", booking })}
+          />
         ) : (
           <section className="card divide-y divide-slate-100 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -391,9 +349,12 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           room={getRoom(dialog.booking.roomId)!}
           allBookings={bookings}
           canEdit={isMine(dialog.booking) || isAdminUser}
+          isAdmin={isAdminUser}
+          isOwner={isMine(dialog.booking)}
           onClose={() => setDialog(null)}
           onCancelled={handleCancelled}
           onUpdated={handleUpdated}
+          onLinkSaved={handleLinkSaved}
         />
       )}
 

@@ -3,6 +3,7 @@
 import type { Booking, RoomId } from "@/lib/types";
 import { SLOT_HOURS, OPEN_HOUR, CLOSE_HOUR } from "@/lib/types";
 import { hourLabel, rangeLabel } from "@/lib/dates";
+import { paletteForEmail, type BookingPalette } from "@/lib/colors";
 import type { Room } from "@/lib/rooms";
 
 const SLOT_HEIGHT = 46;
@@ -10,14 +11,14 @@ const SLOT_HEIGHT = 46;
 type Props = {
   room: Room;
   bookings: Booking[];
-  isMine: (booking: Booking) => boolean;
+  paletteByEmail: Record<string, BookingPalette>;
   onSlotClick: (roomId: RoomId, hour: number) => void;
   onBookingClick: (booking: Booking) => void;
 };
 
 type PlacedBooking = { booking: Booking; column: number; columns: number };
 
-export default function RoomTimeline({ room, bookings, isMine, onSlotClick, onBookingClick }: Props) {
+export default function RoomTimeline({ room, bookings, paletteByEmail, onSlotClick, onBookingClick }: Props) {
   const ordered = [...bookings].sort((a, b) => a.startHour - b.startHour || b.endHour - a.endHour);
 
   // Imported legacy rows can overlap. Lay them out side by side so none is hidden.
@@ -112,7 +113,7 @@ export default function RoomTimeline({ room, bookings, isMine, onSlotClick, onBo
             {placed.map(({ booking, column, columns }) => {
               const top = (booking.startHour - OPEN_HOUR) * SLOT_HEIGHT;
               const height = (booking.endHour - booking.startHour) * SLOT_HEIGHT - 2;
-              const mine = isMine(booking);
+              const palette = paletteForEmail(paletteByEmail, booking.requesterEmail);
               return (
                 <button
                   key={booking.id}
@@ -127,13 +128,9 @@ export default function RoomTimeline({ room, bookings, isMine, onSlotClick, onBo
                     left: `calc(${(column / columns) * 100}% + 6px)`,
                     width: `calc(${100 / columns}% - 12px)`,
                   }}
-                  className={`absolute overflow-hidden rounded-lg border px-2.5 py-1 text-left shadow-sm transition hover:brightness-95 focus:outline-none focus-visible:ring-2 ${room.accent.ring} ${
-                    mine
-                      ? `border-emerald-300 ${room.accent.bgSoft}`
-                      : `border-slate-200 bg-white`
-                  }`}
+                  className={`absolute overflow-hidden rounded-lg border px-2.5 py-1 text-left shadow-sm transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${palette.border} ${palette.bg}`}
                 >
-                  <p className={`truncate text-xs font-semibold ${mine ? room.accent.text : "text-slate-800"}`}>
+                  <p className={`truncate text-xs font-semibold ${palette.text}`}>
                     {booking.title}
                   </p>
                   {height >= 68 && (

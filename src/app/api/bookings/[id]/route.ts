@@ -1,8 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser, isAdmin, UnauthorizedError } from "@/lib/auth";
-import { parseBookingInput } from "@/lib/bookings";
+import { isLegacyBooking, parseBookingInput } from "@/lib/bookings";
+import { notifyMeetingSupport } from "@/lib/notify";
 import { getBookingStore } from "@/lib/sheets";
+import { logUsage } from "@/lib/usage-log";
 import { overlaps } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -45,11 +47,18 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       return NextResponse.json({ error: "ไม่พบรายการจองนี้" }, { status: 404 });
     }
 
+    const admin = isAdmin(user.email);
+    // Legacy rows have no sign-in owner, so any signed-in user may manage them.
     const canEdit =
-      booking.requesterEmail.toLowerCase() === user.email.toLowerCase() || isAdmin(user.email);
+      isLegacyBooking(booking) ||
+      booking.requesterEmail.toLowerCase() === user.email.toLowerCase() ||
+      admin;
     if (!canEdit) {
       return NextResponse.json({ error: "คุณสามารถแก้ไขได้เฉพาะรายการของตนเอง" }, { status: 403 });
     }
+
+    // Only pongka@kku.ac.th may add or change the meeting link.
+    if (!admin) parsed.value.meetingLink = undefined;
 
     const conflict = all.find(
       (item) => item.id !== id && overlaps(item, parsed.value),
@@ -67,6 +76,13 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     if (!updated) {
       return NextResponse.json({ error: "ไม่พบรายการจองนี้" }, { status: 404 });
     }
+    await notifyMeetingSupport(updated, "updated");
+    await logUsage({
+      email: user.email,
+      name: user.name,
+      action: "แก้ไขการจอง",
+      detail: `${updated.title} · ${updated.date} ${String(updated.startHour).padStart(2, "0")}:00–${String(updated.endHour).padStart(2, "0")}:00`,
+    });
     revalidatePath("/book");
 
     return NextResponse.json({ booking: updated });
@@ -89,13 +105,22 @@ export async function DELETE(_request: NextRequest, { params }: Context) {
       return NextResponse.json({ error: "ไม่พบรายการจองนี้" }, { status: 404 });
     }
 
+    const admin = isAdmin(user.email);
     const canDelete =
-      booking.requesterEmail.toLowerCase() === user.email.toLowerCase() || isAdmin(user.email);
+      isLegacyBooking(booking) ||
+      booking.requesterEmail.toLowerCase() === user.email.toLowerCase() ||
+      admin;
     if (!canDelete) {
       return NextResponse.json({ error: "คุณสามารถยกเลิกได้เฉพาะรายการของตนเอง" }, { status: 403 });
     }
 
     await store.remove(id);
+    await logUsage({
+      email: user.email,
+      name: user.name,
+      action: "ยกเลิกการจอง",
+      detail: `${booking.title} · ${booking.date}`,
+    });
     revalidatePath("/book");
 
     return NextResponse.json({ ok: true });

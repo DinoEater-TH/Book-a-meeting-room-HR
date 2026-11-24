@@ -5,9 +5,9 @@ export type Booking = {
   roomId: RoomId;
   /** ISO date, e.g. "2026-11-24" */
   date: string;
-  /** Start hour in 24h format, 8..17 */
+  /** Start hour in 24h format, 8..23 */
   startHour: number;
-  /** End hour (exclusive), 9..18 */
+  /** End hour (exclusive), 9..24 */
   endHour: number;
   /** วัตถุประสงค์การใช้ห้อง */
   title: string;
@@ -19,6 +19,8 @@ export type Booking = {
   equipmentNote?: string;
   needsOnlineLink?: boolean;
   onlineLinkNote?: string;
+  /** ลิงก์ประชุมที่ผู้ดูแลระบบเป็นคนใส่ให้ (เฉพาะ pongka@kku.ac.th) */
+  meetingLink?: string;
   /** ISO timestamp */
   createdAt: string;
 };
@@ -38,6 +40,7 @@ export type BookingEditFields = Pick<
   equipmentNote?: string;
   needsOnlineLink?: boolean;
   onlineLinkNote?: string;
+  meetingLink?: string;
 };
 
 export type SessionUser = {
@@ -47,9 +50,9 @@ export type SessionUser = {
 };
 
 export const OPEN_HOUR = 8;
-export const CLOSE_HOUR = 18;
+export const CLOSE_HOUR = 24;
 
-/** Hours that can start a booking: 8:00 - 17:00 */
+/** Hours that can start a booking: 08:00 - 23:00 */
 export const SLOT_HOURS: number[] = Array.from(
   { length: CLOSE_HOUR - OPEN_HOUR },
   (_, i) => OPEN_HOUR + i,

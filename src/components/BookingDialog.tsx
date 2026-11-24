@@ -3,11 +3,23 @@
 import { useMemo, useState } from "react";
 import type { Booking, RoomId } from "@/lib/types";
 import { CLOSE_HOUR, OPEN_HOUR, overlaps, SLOT_HOURS } from "@/lib/types";
+import { isLegacyBooking, isUnnamedBooking } from "@/lib/bookings";
 import { formatThaiDate, hourLabel, rangeLabel } from "@/lib/dates";
 import { ROOMS, type Room } from "@/lib/rooms";
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20";
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20";
+
+const EQUIPMENT_OPTIONS = ["ทีวี", "ไมค์", "pointer", "กล้อง", "อื่นๆ"] as const;
+type EquipmentOption = (typeof EQUIPMENT_OPTIONS)[number];
+
+function splitEquipment(value: string): { choice: string; other: string } {
+  if (!value) return { choice: "", other: "" };
+  if ((EQUIPMENT_OPTIONS as readonly string[]).includes(value)) {
+    return { choice: value, other: "" };
+  }
+  return { choice: "อื่นๆ", other: value };
+}
 
 function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
@@ -53,6 +65,7 @@ type BookingValues = {
   equipmentNote?: string;
   needsOnlineLink: boolean;
   onlineLinkNote?: string;
+  meetingLink?: string;
 };
 
 type FormProps = {
@@ -68,6 +81,7 @@ type FormProps = {
   initialEquipmentNote?: string;
   initialNeedsOnlineLink?: boolean;
   initialOnlineLinkNote?: string;
+  initialMeetingLink?: string;
   allBookings: Booking[];
   excludeId?: string;
   submitLabel: string;
@@ -114,6 +128,7 @@ function BookingForm({
   initialEquipmentNote = "",
   initialNeedsOnlineLink = false,
   initialOnlineLinkNote = "",
+  initialMeetingLink = "",
   allBookings,
   excludeId,
   submitLabel,
@@ -129,7 +144,9 @@ function BookingForm({
   const [title, setTitle] = useState(initialTitle);
   const [note, setNote] = useState(initialNote);
   const [needsEquipment, setNeedsEquipment] = useState(initialNeedsEquipment);
-  const [equipmentNote, setEquipmentNote] = useState(initialEquipmentNote);
+  const initialEquipment = splitEquipment(initialEquipmentNote);
+  const [equipmentChoice, setEquipmentChoice] = useState(initialEquipment.choice);
+  const [equipmentOther, setEquipmentOther] = useState(initialEquipment.other);
   const [needsOnlineLink, setNeedsOnlineLink] = useState(initialNeedsOnlineLink);
   const [onlineLinkNote, setOnlineLinkNote] = useState(initialOnlineLinkNote);
   const [submitting, setSubmitting] = useState(false);
@@ -166,9 +183,14 @@ function BookingForm({
         title: title.trim(),
         note: note.trim(),
         needsEquipment,
-        equipmentNote: needsEquipment ? equipmentNote.trim() : "",
+        equipmentNote: needsEquipment
+          ? equipmentChoice === "อื่นๆ"
+            ? equipmentOther.trim()
+            : equipmentChoice
+          : "",
         needsOnlineLink,
         onlineLinkNote: needsOnlineLink ? onlineLinkNote.trim() : "",
+        meetingLink: initialMeetingLink || undefined,
       });
       onSaved(booking);
     } catch (caught) {
@@ -183,7 +205,7 @@ function BookingForm({
       <div>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">{eyebrow}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-orange-600">{eyebrow}</p>
             <h2 className="mt-1 text-xl font-bold text-slate-900">{heading}</h2>
             <p className="mt-1 text-sm text-slate-500">{formatThaiDate(date, { weekday: true })}</p>
           </div>
@@ -282,17 +304,35 @@ function BookingForm({
               onChange={setNeedsEquipment}
             />
             {needsEquipment && (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-slate-600">ระบุอุปกรณ์ที่ต้องการ</span>
-                <textarea
-                  value={equipmentNote}
-                  onChange={(event) => setEquipmentNote(event.target.value)}
-                  placeholder="เช่น โปรเจคเตอร์, กระดานไวท์บอร์ด, อุปกรณ์ประชุมออนไลน์"
-                  rows={2}
-                  maxLength={500}
-                  className={`${inputClass} resize-none`}
-                />
-              </label>
+              <div className="space-y-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-slate-600">ระบุอุปกรณ์ที่ต้องการ</span>
+                  <select
+                    value={equipmentChoice}
+                    onChange={(event) => setEquipmentChoice(event.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">-- เลือกอุปกรณ์ --</option>
+                    {EQUIPMENT_OPTIONS.map((option: EquipmentOption) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {equipmentChoice === "อื่นๆ" && (
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-slate-600">ระบุเพิ่มเติม</span>
+                    <input
+                      value={equipmentOther}
+                      onChange={(event) => setEquipmentOther(event.target.value)}
+                      placeholder="เช่น กระดานไวท์บอร์ด, สาย HDMI"
+                      maxLength={500}
+                      className={inputClass}
+                    />
+                  </label>
+                )}
+              </div>
             )}
 
             <YesNoSelect
@@ -303,7 +343,7 @@ function BookingForm({
             {needsOnlineLink && (
               <>
                 <p className="text-[11px] leading-relaxed text-slate-500">
-                  เรื่องประชุม วันที่ และระยะเวลาการประชุมจะถูกส่งไปพร้อมคำขอโดยอัตโนมัติ
+                  เรื่องประชุม วันที่ และระยะเวลาการประชุมจะถูกส่งแจ้งผ่าน Google Chat ให้ pongka@kku.ac.th โดยอัตโนมัติ
                 </p>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-slate-600">
@@ -345,7 +385,7 @@ function BookingForm({
             <button
               type="submit"
               disabled={submitting || Boolean(conflict)}
-              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? busyLabel : submitLabel}
             </button>
@@ -378,9 +418,12 @@ type DetailProps = {
   room: Room;
   allBookings: Booking[];
   canEdit: boolean;
+  isAdmin: boolean;
+  isOwner: boolean;
   onClose: () => void;
   onCancelled: (id: string) => void;
   onUpdated: (booking: Booking) => void;
+  onLinkSaved: (booking: Booking) => void;
 };
 
 export default function BookingDialog(props: CreateProps | DetailProps) {
@@ -439,6 +482,7 @@ function EditDialog({
       initialEquipmentNote={booking.equipmentNote}
       initialNeedsOnlineLink={booking.needsOnlineLink}
       initialOnlineLinkNote={booking.onlineLinkNote}
+      initialMeetingLink={booking.meetingLink}
       allBookings={allBookings}
       excludeId={booking.id}
       submitLabel="บันทึกการแก้ไข"
@@ -458,10 +502,16 @@ function EditDialog({
   );
 }
 
-function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelled, onUpdated }: DetailProps) {
+function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, onClose, onCancelled, onUpdated, onLinkSaved }: DetailProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [linkInput, setLinkInput] = useState(booking.meetingLink ?? "");
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const unnamed = isUnnamedBooking(booking);
+  const legacy = isLegacyBooking(booking);
+  const noName = !booking.requesterName.trim();
 
   if (editing) {
     return (
@@ -496,11 +546,53 @@ function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelle
     }
   }
 
+  async function saveLink() {
+    setLinkSaving(true);
+    setError(null);
+    try {
+      const updated = await readResponse(
+        await fetch(`/api/bookings/${booking.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId: booking.roomId,
+            date: booking.date,
+            startHour: booking.startHour,
+            endHour: booking.endHour,
+            title: booking.title,
+            note: booking.note,
+            needsEquipment: booking.needsEquipment,
+            equipmentNote: booking.equipmentNote,
+            needsOnlineLink: booking.needsOnlineLink,
+            onlineLinkNote: booking.onlineLinkNote,
+            meetingLink: linkInput.trim(),
+          }),
+        }),
+      );
+      onLinkSaved(updated);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "บันทึก ลิงก์ไม่สำเร็จ");
+    } finally {
+      setLinkSaving(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!booking.meetingLink) return;
+    try {
+      await navigator.clipboard.writeText(booking.meetingLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("คัดลอกไม่สำเร็จ กรุณาเลือกข้อความแล้วก๊อปปี้เอง");
+    }
+  }
+
   const details: [string, string][] = [
     ["ห้องประชุม", room.name],
     ["วันที่", formatThaiDate(booking.date, { weekday: true })],
     ["เวลา", `${rangeLabel(booking.startHour, booking.endHour)} น.`],
-    ["ผู้ขอใช้ห้อง", booking.requesterName],
+    ["ผู้ขอใช้ห้อง", noName ? "ไม่ได้ระบุชื่อ (ข้อมูลนำเข้าเก่า)" : booking.requesterName],
     ...(booking.requesterEmail && booking.requesterEmail !== "legacy@imported.local"
       ? ([["อีเมล", booking.requesterEmail]] as [string, string][])
       : []),
@@ -526,6 +618,13 @@ function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelle
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">รายละเอียดการจอง</p>
             <h2 className="mt-1 text-xl font-bold text-slate-900">{booking.title}</h2>
+            {unnamed && (
+              <span className="mt-2 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                {legacy && !noName
+                  ? "ข้อมูลนำเข้าเก่า · ทุกคนแก้ไข/ยกเลิกได้"
+                  : "ไม่ได้ระบุชื่อ · ทุกคนแก้ไข/ยกเลิกได้"}
+              </span>
+            )}
           </div>
           <CloseButton onClose={onClose} />
         </div>
@@ -539,10 +638,68 @@ function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelle
           ))}
         </dl>
 
+        {booking.needsOnlineLink && (
+          <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <p className="text-xs font-semibold text-sky-900">ลิงก์การประชุมออนไลน์</p>
+            {booking.meetingLink ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <a
+                  href={booking.meetingLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex-1 break-all text-sm font-medium text-sky-800 underline underline-offset-2"
+                >
+                  {booking.meetingLink}
+                </a>
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                >
+                  {copied ? "คัดลอกแล้ว ✓" : "คัดลอกลิงก์"}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-sky-800/80">
+                {isAdmin ? "ยังไม่มีลิงก์ — กรุณาวางลิงก์ด้านล่าง" : "รอผู้ดูแลระบบใส่ลิงก์การประชุมให้"}
+              </p>
+            )}
+
+            {isAdmin && (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={linkInput}
+                  onChange={(event) => setLinkInput(event.target.value)}
+                  placeholder="วางลิงก์ Google Meet / Zoom ที่นี่"
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={saveLink}
+                  disabled={linkSaving}
+                  className="shrink-0 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+                >
+                  {linkSaving ? "กำลังบันทึก..." : "บันทึก ลิงก์"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
             {error}
           </div>
+        )}
+
+        {canEdit && (
+          <p className="mt-4 text-[11px] text-slate-400">
+            {unnamed || legacy
+              ? "ข้อมูลนำเข้าเก่า ทุกคนสามารถแก้ไขหรือยกเลิกได้"
+              : isOwner
+                ? "คุณเป็นผู้จองรายการนี้ สามารถแก้ไขหรือยกเลิกได้"
+                : "ผู้ดูแลระบบสามารถแก้ไขหรือยกเลิกได้"}
+          </p>
         )}
 
         <div className="mt-6 flex justify-end gap-2">
@@ -557,7 +714,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, onClose, onCancelle
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-100"
             >
               แก้ไข
             </button>
