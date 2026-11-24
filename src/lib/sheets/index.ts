@@ -1,3 +1,4 @@
+import { SPREADSHEET_ID } from "../config";
 import { GoogleSheetBookingStore } from "./google";
 import { MockBookingStore } from "./mock";
 import type { BookingStore } from "./provider";
@@ -8,7 +9,7 @@ let store: BookingStore | null = null;
 
 export function sheetsConfigured(): boolean {
   return Boolean(
-    process.env.GOOGLE_SHEETS_ID &&
+    SPREADSHEET_ID &&
       process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
       process.env.GOOGLE_PRIVATE_KEY,
   );
