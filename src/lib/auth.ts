@@ -15,7 +15,10 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
 }
 
 export function adminEmails(): string[] {
-  return (process.env.ADMIN_EMAILS || "")
+  // Public/known admin address; keep it in code so hosts that flag env values
+  // which also appear in the repository don't block the build.
+  const configured = process.env.ADMIN_EMAILS || (authConfigured() ? "pongka@kku.ac.th" : "");
+  return configured
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);

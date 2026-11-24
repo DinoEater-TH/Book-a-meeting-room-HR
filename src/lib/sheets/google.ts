@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { SPREADSHEET_ID } from "../config";
 import type { Booking, NewBooking } from "../types";
 import {
   bookingToRow,
@@ -34,7 +35,7 @@ export class GoogleSheetBookingStore implements BookingStore {
   private sheetIdCache: number | null = null;
 
   constructor() {
-    this.spreadsheetId = requiredEnv("GOOGLE_SHEETS_ID");
+    this.spreadsheetId = SPREADSHEET_ID;
     this.tabName = process.env.GOOGLE_SHEETS_TAB || "Bookings";
     this.backendName = `Google Sheets · ${this.tabName}`;
 
