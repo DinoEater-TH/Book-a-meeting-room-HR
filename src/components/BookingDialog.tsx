@@ -132,6 +132,7 @@ type FormProps = {
   onSubmit: (values: BookingValues) => Promise<Booking>;
   onSaved: (booking: Booking) => void;
   onClose: () => void;
+  onBusyChange?: (message: string | null) => void;
 };
 
 function YesNoSelect({
@@ -179,6 +180,7 @@ function BookingForm({
   onSubmit,
   onSaved,
   onClose,
+  onBusyChange,
 }: FormProps) {
   const [roomId, setRoomId] = useState<RoomId>(initialRoomId);
   const [date, setDate] = useState(initialDate);
@@ -218,6 +220,7 @@ function BookingForm({
     const equipmentNote = serializeEquipment(equipmentChoices, equipmentOther);
 
     setSubmitting(true);
+    onBusyChange?.(busyLabel);
     try {
       const booking = await onSubmit({
         roomId,
@@ -232,11 +235,13 @@ function BookingForm({
         onlineLinkNote: needsOnlineLink ? onlineLinkNote.trim() : "",
         meetingLink: initialMeetingLink || undefined,
       });
+      onBusyChange?.(null);
       onSaved(booking);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
     } finally {
       setSubmitting(false);
+      onBusyChange?.(null);
     }
   }
 
@@ -470,6 +475,7 @@ type CreateProps = {
   dayBookings: Booking[];
   onClose: () => void;
   onCreated: (booking: Booking) => void;
+  onBusyChange: (message: string | null) => void;
 };
 
 type DetailProps = {
@@ -484,6 +490,7 @@ type DetailProps = {
   onCancelled: (id: string) => void;
   onUpdated: (booking: Booking) => void;
   onLinkSaved: (booking: Booking) => void;
+  onBusyChange: (message: string | null) => void;
 };
 
 export default function BookingDialog(props: CreateProps | DetailProps) {
@@ -502,6 +509,7 @@ export default function BookingDialog(props: CreateProps | DetailProps) {
       busyLabel="กำลังจอง..."
       onClose={props.onClose}
       onSaved={props.onCreated}
+      onBusyChange={props.onBusyChange}
       onSubmit={async (values) =>
         readResponse(
           await fetch("/api/bookings", {
@@ -521,12 +529,14 @@ function EditDialog({
   allBookings,
   onClose,
   onUpdated,
+  onBusyChange,
 }: {
   booking: Booking;
   room: Room;
   allBookings: Booking[];
   onClose: () => void;
   onUpdated: (booking: Booking) => void;
+  onBusyChange: (message: string | null) => void;
 }) {
   return (
     <BookingForm
@@ -549,6 +559,7 @@ function EditDialog({
       busyLabel="กำลังบันทึก..."
       onClose={onClose}
       onSaved={onUpdated}
+      onBusyChange={onBusyChange}
       onSubmit={async (values) =>
         readResponse(
           await fetch(`/api/bookings/${booking.id}`, {
@@ -562,7 +573,7 @@ function EditDialog({
   );
 }
 
-function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, onClose, onCancelled, onUpdated, onLinkSaved }: DetailProps) {
+function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, onClose, onCancelled, onUpdated, onLinkSaved, onBusyChange }: DetailProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -580,6 +591,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
         room={room}
         allBookings={allBookings}
         onClose={onClose}
+        onBusyChange={onBusyChange}
         onUpdated={(updated) => {
           setEditing(false);
           onUpdated(updated);
@@ -590,6 +602,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
 
   async function cancel() {
     setBusy(true);
+    onBusyChange?.("กำลังยกเลิกการจอง...");
     setError(null);
     try {
       const res = await fetch(`/api/bookings/${booking.id}`, { method: "DELETE" });
@@ -598,16 +611,19 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
         setError(data.error || "ยกเลิกไม่สำเร็จ");
         return;
       }
+      onBusyChange?.(null);
       onCancelled(booking.id);
     } catch {
       setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
     } finally {
       setBusy(false);
+      onBusyChange?.(null);
     }
   }
 
   async function saveLink() {
     setLinkSaving(true);
+    onBusyChange?.("กำลังบันทึก ลิงก์การประชุม...");
     setError(null);
     try {
       const updated = await readResponse(
@@ -629,11 +645,13 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
           }),
         }),
       );
+      onBusyChange?.(null);
       onLinkSaved(updated);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "บันทึก ลิงก์ไม่สำเร็จ");
     } finally {
       setLinkSaving(false);
+      onBusyChange?.(null);
     }
   }
 

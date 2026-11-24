@@ -12,6 +12,7 @@ import {
 } from "@/lib/dates";
 import RoomTimeline from "./RoomTimeline";
 import BookingDialog from "./BookingDialog";
+import StatusModal from "./StatusModal";
 import UpcomingCalendar from "./UpcomingCalendar";
 import { buildPaletteByEmail } from "@/lib/colors";
 
@@ -40,6 +41,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
   const [dialog, setDialog] = useState<DialogState>(null);
   const [tab, setTab] = useState<Tab>("board");
   const [toast, setToast] = useState<string | null>(null);
+  const [busyMessage, setBusyMessage] = useState<string | null>(null);
 
   const dayBookings = useMemo(
     () => bookings.filter((booking) => booking.date === date),
@@ -344,6 +346,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           dayBookings={dayBookings}
           onClose={() => setDialog(null)}
           onCreated={handleCreated}
+          onBusyChange={setBusyMessage}
         />
       )}
       {dialog?.type === "detail" && (
@@ -359,8 +362,11 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           onCancelled={handleCancelled}
           onUpdated={handleUpdated}
           onLinkSaved={handleLinkSaved}
+          onBusyChange={setBusyMessage}
         />
       )}
+
+      {busyMessage && <StatusModal message={busyMessage} />}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-xl">
