@@ -34,20 +34,18 @@ https://ชื่อสุ่ม.netlify.app/api/auth/callback/google
 
 เข้าเว็บ Netlify → เลือก site ของคุณ → **Site configuration → Environment variables** → กด **Add a variable** ทีละตัวครับ
 
-เปิดไฟล์ `.env.local` ในโปรเจกต์ด้วย Notepad แล้วก็อปค่าหลัง `=` มาใส่:
+เปิดไฟล์ `.env.local` ในโปรเจกต์ด้วย Notepad แล้วก็อปค่าหลัง `=` มาใส่ **เฉพาะ 5 ตัวนี้**:
 
 | ชื่อตัวแปร | ค่าที่ใส่ |
 |---|---|
-| `GOOGLE_SHEETS_ID` | ก็อปจาก `.env.local` |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | ก็อปจาก `.env.local` |
-| `GOOGLE_SHEETS_TAB` | `Bookings` |
 | `GOOGLE_PRIVATE_KEY` | ก็อปจาก `.env.local` **ไม่เอา `"` รอบนสุด** |
 | `GOOGLE_CLIENT_ID` | ก็อปจาก `.env.local` |
 | `GOOGLE_CLIENT_SECRET` | ก็อปจาก `.env.local` |
 | `AUTH_SECRET` | ก็อปจาก `.env.local` |
-| `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` | `kku.ac.th` |
-| `ADMIN_EMAILS` | `pongka@kku.ac.th` |
 
+> ค่าที่ไม่ใช่ความลับ (`GOOGLE_SHEETS_ID`, `GOOGLE_SHEETS_TAB`, `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN`, `ADMIN_EMAILS`) ถูกใส่เป็นค่าเริ่มต้นในโค้ดแล้ว **ไม่ต้องใส่ใน Netlify** ( Netlify จะแจ้งเตือน "Exposed secrets detected" ถ้าใส่ค่าที่ปรากฏใน repo )
+>
 > ถ้า Netlify มีช่อง **Scopes** ให้เลือก **All scopes** หรือปล่อยค่าเริ่มต้นก็ได้ครับ
 
 ---
