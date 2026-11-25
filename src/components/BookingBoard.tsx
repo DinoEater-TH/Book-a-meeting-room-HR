@@ -114,7 +114,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-brand-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -124,7 +124,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
               className="size-10 shrink-0 object-contain"
             />
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold text-slate-900 sm:text-base">
+              <h1 className="truncate text-sm font-bold text-brand-900 sm:text-base">
                 ระบบจองห้องประชุม
               </h1>
               <p className="hidden text-xs text-slate-500 sm:block">กองทรัพยากรบุคคล</p>
@@ -135,24 +135,24 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             {isAdminUser && (
               <a
                 href="/log"
-                className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-orange-50 hover:text-orange-700"
+                className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-brand-50 hover:text-brand-700"
               >
                 ประวัติการใช้งาน
               </a>
             )}
-            <div className="flex items-center gap-2 border-slate-200 pl-3 sm:border-l">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
+            <div className="flex items-center gap-2 border-brand-100 pl-3 sm:border-l">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-900 text-xs font-semibold text-white">
                 {initials}
               </span>
               <div className="hidden min-w-0 sm:block">
-                <p className="max-w-40 truncate text-xs font-semibold text-slate-800">{user.name}</p>
+                <p className="max-w-40 truncate text-xs font-semibold text-brand-900">{user.name}</p>
                 <p className="max-w-40 truncate text-[11px] text-slate-400">{user.email}</p>
               </div>
             </div>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-brand-100 hover:text-slate-700"
               >
                 ออกจากระบบ
               </button>
@@ -169,7 +169,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
         )}
 
         {!user.emailConnected && (
-          <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+          <div className="mb-5 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900">
             <strong className="font-semibold">เปิดใช้งานอีเมลแจ้งผลการจอง:</strong>{" "}
             กด “ออกจากระบบ” แล้วล็อกอินใหม่อีกครั้ง เพื่ออนุญาตให้ระบบส่งอีเมลจาก Gmail ของคุณ
           </div>
@@ -179,11 +179,11 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           <div>
             <p className="text-xs font-medium text-slate-500">วันที่ที่กำลังดู</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              <h2 className="text-xl font-bold tracking-tight text-brand-900 sm:text-2xl">
                 {formatThaiDate(date, { weekday: true })}
               </h2>
               {relativeDayLabel(date) && (
-                <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
+                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
                   {relativeDayLabel(date)}
                 </span>
               )}
@@ -195,7 +195,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             <button
               type="button"
               onClick={() => setDate(addDays(date, -1))}
-              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+              className="flex size-9 items-center justify-center rounded-xl border border-brand-100 bg-white text-slate-600 transition hover:bg-brand-50"
               aria-label="วันก่อนหน้า"
             >
               ‹
@@ -204,13 +204,13 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
               type="date"
               value={date}
               onChange={(event) => event.target.value && setDate(event.target.value)}
-              className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+              className="h-9 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               aria-label="เลือกวันที่"
             />
             <button
               type="button"
               onClick={() => setDate(addDays(date, 1))}
-              className="flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+              className="flex size-9 items-center justify-center rounded-xl border border-brand-100 bg-white text-slate-600 transition hover:bg-brand-50"
               aria-label="วันถัดไป"
             >
               ›
@@ -218,20 +218,20 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             <button
               type="button"
               onClick={() => setDate(todayISO())}
-              className="h-9 rounded-xl bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-700"
+              className="h-9 rounded-xl bg-brand-900 px-3 text-xs font-semibold text-white transition hover:bg-brand-800"
             >
               วันนี้
             </button>
           </div>
         </div>
 
-        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
+        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-brand-100">
           <button
             type="button"
             onClick={() => setTab("board")}
             className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "board"
-                ? "border-orange-600 text-orange-700"
+                ? "border-brand-500 text-brand-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -242,7 +242,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             onClick={() => setTab("upcoming")}
             className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "upcoming"
-                ? "border-orange-600 text-orange-700"
+                ? "border-brand-500 text-brand-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -253,7 +253,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             onClick={() => setTab("mine")}
             className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === "mine"
-                ? "border-orange-600 text-orange-700"
+                ? "border-brand-500 text-brand-700"
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -265,12 +265,12 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           <>
             <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded border border-slate-200 bg-white" /> ช่องว่าง
+                <span className="size-3 rounded border border-brand-100 bg-white" /> ช่องว่าง
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded border border-orange-200 bg-orange-50" />
-                <span className="size-3 rounded border border-sky-200 bg-sky-50 -ml-1" />
-                <span className="size-3 rounded border border-violet-200 bg-violet-50 -ml-1" /> สีแยกตามอีเมลผู้จอง
+                <span className="size-3 rounded bg-brand-500" />
+                <span className="size-3 rounded bg-brand-700 -ml-1" />
+                <span className="size-3 rounded border border-brand-200 bg-brand-50 -ml-1" /> สีแยกตามอีเมลผู้จอง
               </span>
             </div>
 
@@ -304,10 +304,10 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           />
         ) : (
           <section className="card divide-y divide-slate-100 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h2 className="font-semibold text-slate-900">รายการจองของฉัน</h2>
+            <div className="flex items-center justify-between border-b border-brand-50 px-5 py-4">
+              <h2 className="font-semibold text-brand-900">รายการจองของฉัน</h2>
               {isAdminUser && (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                <span className="rounded-full bg-brand-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
                   สิทธิ์ผู้ดูแลระบบ
                 </span>
               )}
@@ -323,16 +323,16 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
                     key={booking.id}
                     type="button"
                     onClick={() => setDialog({ type: "detail", booking })}
-                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-brand-50"
                   >
                     <div className="w-24 shrink-0">
-                      <p className={`text-sm font-semibold ${past ? "text-slate-400" : "text-slate-800"}`}>
+                      <p className={`text-sm font-semibold ${past ? "text-slate-400" : "text-brand-900"}`}>
                         {formatThaiDate(booking.date, { short: true })}
                       </p>
                       <p className="text-[11px] text-slate-400">{timeLabel(booking)}</p>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`truncate text-sm font-medium ${past ? "text-slate-400" : "text-slate-800"}`}>
+                      <p className={`truncate text-sm font-medium ${past ? "text-slate-400" : "text-brand-900"}`}>
                         {booking.title}
                       </p>
                       <p className="truncate text-xs text-slate-400">{room?.shortName}</p>
@@ -382,7 +382,7 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
       {busyMessage && <StatusModal message={busyMessage} />}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-xl">
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-brand-900 px-5 py-3 text-sm font-medium text-white shadow-xl">
           {toast}
         </div>
       )}

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+    <Suspense fallback={<div className="min-h-screen bg-brand-50" />}>
       <LoginForm authEnabled={googleAuthConfigured} />
     </Suspense>
   );

@@ -58,7 +58,7 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
 
   return (
     <section className="card overflow-hidden">
-      <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+      <header className="flex items-start justify-between gap-3 border-b border-brand-50 px-5 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             {room.logo ? (
@@ -73,13 +73,13 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
                 {room.id === "room10" ? "10" : "SM"}
               </span>
             )}
-            <h2 className="truncate text-base font-semibold text-slate-900">{room.name}</h2>
+            <h2 className="truncate text-base font-semibold text-brand-900">{room.name}</h2>
           </div>
           <p className="mt-1.5 pl-[46px] text-xs text-slate-500">
             {room.location} · {room.capacity}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+        <span className="shrink-0 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-medium text-slate-600">
           {bookings.length} รายการ
         </span>
       </header>
@@ -102,7 +102,7 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
             role="grid"
             aria-label={`ตารางเวลาห้อง${room.name}`}
             onClick={handleGridClick}
-            className="relative flex-1 cursor-crosshair overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80"
+            className="relative flex-1 cursor-crosshair overflow-hidden rounded-xl border border-brand-100 bg-brand-50/80"
           >
             {SLOT_HOURS.map((hour) => {
               const past = Boolean(date && isPastSlot(date, hour));
@@ -112,10 +112,10 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
                   style={{ height: SLOT_HEIGHT }}
                   className={`border-b border-dashed last:border-b-0 ${
                     past
-                      ? "border-slate-100 bg-slate-100/80"
+                      ? "border-brand-50 bg-brand-100/80"
                       : hour % 2 === 0
-                        ? "border-slate-200 bg-white/40"
-                        : "border-slate-200"
+                        ? "border-brand-100 bg-white/40"
+                        : "border-brand-100"
                   }`}
                 />
               );

@@ -26,11 +26,11 @@ export const ROOMS: Room[] = [
     capacity: "10 ที่นั่ง",
     location: "กองทรัพยากรบุคคล",
     accent: {
-      bg: "bg-orange-600",
-      bgSoft: "bg-orange-50",
-      border: "border-orange-200",
-      text: "text-orange-700",
-      ring: "ring-orange-500",
+      bg: "bg-brand-700",
+      bgSoft: "bg-brand-50",
+      border: "border-brand-200",
+      text: "text-brand-700",
+      ring: "ring-brand-500",
     },
   },
   {
@@ -41,11 +41,11 @@ export const ROOMS: Room[] = [
     location: "กองทรัพยากรบุคคล",
     logo: "/smart-hr.png",
     accent: {
-      bg: "bg-indigo-600",
-      bgSoft: "bg-indigo-50",
-      border: "border-indigo-200",
-      text: "text-indigo-700",
-      ring: "ring-indigo-500",
+      bg: "bg-brand-700",
+      bgSoft: "bg-brand-50",
+      border: "border-brand-200",
+      text: "text-brand-700",
+      ring: "ring-brand-500",
     },
   },
 ];

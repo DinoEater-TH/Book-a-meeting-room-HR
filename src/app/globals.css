@@ -3,6 +3,18 @@
 @theme {
   --font-sans: "Noto Sans Thai", "Sarabun", "IBM Plex Sans Thai", ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", sans-serif;
+
+  /* Exact colours sampled from public/logo.png */
+  --color-brand-50: #fff8ec;
+  --color-brand-100: #ffedd2;
+  --color-brand-200: #fddca5;
+  --color-brand-300: #fbc472;
+  --color-brand-400: #f8ad35;
+  --color-brand-500: #f49b15;
+  --color-brand-600: #d8790f;
+  --color-brand-700: #b0462c;
+  --color-brand-800: #8a3622;
+  --color-brand-900: #50190c;
 }
 
 @layer base {
@@ -11,17 +23,17 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-brand-50 text-brand-900 antialiased;
     font-family: var(--font-sans);
   }
 
   ::selection {
-    @apply bg-orange-200 text-orange-950;
+    @apply bg-brand-200 text-brand-900;
   }
 }
 
 @utility card {
-  @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  @apply rounded-2xl border border-brand-100 bg-white shadow-sm;
 }
 
 @keyframes pop-in {

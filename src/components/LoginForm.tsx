@@ -71,7 +71,7 @@ export default function LoginForm({ authEnabled }: { authEnabled: boolean }) {
             alt="โลโก้ระบบจองห้องประชุม"
             className="mx-auto mb-4 size-14 object-contain"
           />
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">ระบบจองห้องประชุม</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-900">ระบบจองห้องประชุม</h1>
           <p className="mt-1 text-sm text-slate-500">กองทรัพยากรบุคคล</p>
         </div>
 
@@ -92,7 +92,7 @@ export default function LoginForm({ authEnabled }: { authEnabled: boolean }) {
               type="button"
               onClick={signInWithGoogle}
               disabled={loading}
-              className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-brand-200 bg-white px-4 py-3 text-sm font-medium text-brand-900 shadow-sm transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <GoogleMark />
               {loading ? "กำลังเชื่อมต่อ..." : "เข้าสู่ระบบด้วย Google"}
@@ -103,7 +103,7 @@ export default function LoginForm({ authEnabled }: { authEnabled: boolean }) {
               <p className="mt-1">ยังไม่ได้ตั้งค่า Google Login จึงไม่ต้องล็อกอิน</p>
               <Link
                 href="/book"
-                className="mt-3 inline-flex rounded-lg bg-amber-900 px-4 py-2 font-medium text-white hover:bg-amber-800"
+                className="mt-3 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-medium text-white hover:bg-brand-800"
               >
                 เข้าสู่ระบบทดลอง →
               </Link>

@@ -8,7 +8,7 @@ import { formatThaiDate, hourLabel, isPastSlot, rangeLabel, todayISO } from "@/l
 import { ROOMS, type Room } from "@/lib/rooms";
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20";
+  "w-full rounded-xl border border-brand-100 bg-white px-3 py-2.5 text-sm text-brand-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20";
 
 const EQUIPMENT_OPTIONS = ["Smart TV", "ไมโคโฟน", "Pointer", "กล้อง webcam"] as const;
 type EquipmentOption = (typeof EQUIPMENT_OPTIONS)[number];
@@ -61,7 +61,7 @@ function serializeEquipment(choices: string[], other: string): string | undefine
 
 function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-brand-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -82,7 +82,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
     <button
       type="button"
       onClick={onClose}
-      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-brand-100 hover:text-slate-600"
       aria-label="ปิด"
     >
       <svg viewBox="0 0 20 20" className="size-5" fill="currentColor" aria-hidden="true">
@@ -266,8 +266,8 @@ function BookingForm({
       <div>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-orange-600">{eyebrow}</p>
-            <h2 className="mt-1 text-xl font-bold text-slate-900">{heading}</h2>
+            <p className="text-xs font-medium uppercase tracking-wide text-brand-700">{eyebrow}</p>
+            <h2 className="mt-1 text-xl font-bold text-brand-900">{heading}</h2>
             <p className="mt-1 text-sm text-slate-500">{formatThaiDate(date, { weekday: true })}</p>
           </div>
           <CloseButton onClose={onClose} />
@@ -371,7 +371,7 @@ function BookingForm({
             />
           </label>
 
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <div className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/70 p-3">
             <p className="text-xs font-semibold text-slate-700">ความช่วยเหลือเพิ่มเติมสำหรับการประชุม</p>
 
             <div>
@@ -386,8 +386,8 @@ function BookingForm({
                       key={option}
                       className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition ${
                         checked
-                          ? "border-orange-300 bg-orange-50 font-medium text-orange-800"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          ? "border-brand-300 bg-brand-50 font-medium text-brand-800"
+                          : "border-brand-100 bg-white text-slate-700 hover:bg-brand-50"
                       }`}
                     >
                       <input
@@ -400,7 +400,7 @@ function BookingForm({
                               : current.filter((item) => item !== option),
                           );
                         }}
-                        className="size-4 accent-orange-600"
+                        className="size-4 accent-brand-700"
                       />
                       {option}
                     </label>
@@ -472,14 +472,14 @@ function BookingForm({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+              className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-brand-100"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={submitting || Boolean(conflict) || blockedPast}
-              className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? busyLabel : submitLabel}
             </button>
@@ -725,7 +725,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">รายละเอียดการจอง</p>
-            <h2 className="mt-1 text-xl font-bold text-slate-900">{booking.title}</h2>
+            <h2 className="mt-1 text-xl font-bold text-brand-900">{booking.title}</h2>
             {unnamed && (
               <span className="mt-2 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                 {legacy && !noName
@@ -737,38 +737,38 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
           <CloseButton onClose={onClose} />
         </div>
 
-        <dl className="mt-6 divide-y divide-slate-100 rounded-xl border border-slate-100">
+        <dl className="mt-6 divide-y divide-slate-100 rounded-xl border border-brand-50">
           {details.map(([label, value]) => (
             <div key={label} className="grid grid-cols-[110px_1fr] gap-3 px-4 py-3 text-sm">
               <dt className="text-slate-500">{label}</dt>
-              <dd className="break-words font-medium text-slate-800">{value}</dd>
+              <dd className="break-words font-medium text-brand-900">{value}</dd>
             </div>
           ))}
         </dl>
 
         {(booking.meetingLink || isAdmin) && (
-          <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50/60 p-4">
-            <p className="text-xs font-semibold text-sky-900">ลิงก์การประชุมออนไลน์</p>
+          <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-4">
+            <p className="text-xs font-semibold text-brand-900">ลิงก์การประชุมออนไลน์</p>
             {booking.meetingLink ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <a
                   href={booking.meetingLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex-1 break-all text-sm font-medium text-sky-800 underline underline-offset-2"
+                  className="min-w-0 flex-1 break-all text-sm font-medium text-brand-800 underline underline-offset-2"
                 >
                   {booking.meetingLink}
                 </a>
                 <button
                   type="button"
                   onClick={copyLink}
-                  className="rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                  className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 transition hover:bg-brand-100"
                 >
                   {copied ? "คัดลอกแล้ว ✓" : "คัดลอกลิงก์"}
                 </button>
               </div>
             ) : (
-              <p className="mt-2 text-xs text-sky-800/80">
+              <p className="mt-2 text-xs text-brand-800/80">
                 {isAdmin ? "ยังไม่มีลิงก์ — กรุณาวางลิงก์ด้านล่าง" : "รอผู้ดูแลระบบใส่ลิงก์การประชุมให้"}
               </p>
             )}
@@ -785,7 +785,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
                   type="button"
                   onClick={saveLink}
                   disabled={linkSaving}
-                  className="shrink-0 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+                  className="shrink-0 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:opacity-50"
                 >
                   {linkSaving ? "กำลังบันทึก..." : "บันทึก ลิงก์"}
                 </button>
@@ -814,7 +814,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+            className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-brand-100"
           >
             ปิด
           </button>
@@ -822,7 +822,7 @@ function DetailDialog({ booking, room, allBookings, canEdit, isAdmin, isOwner, o
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-100"
+              className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
             >
               แก้ไข
             </button>
