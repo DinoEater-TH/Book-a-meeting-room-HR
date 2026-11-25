@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser, isAdmin, UnauthorizedError } from "@/lib/auth";
 import { isLegacyBooking, parseBookingInput } from "@/lib/bookings";
 import { notifyBookerByEmail } from "@/lib/email";
+import { getGmailAccessToken } from "@/lib/google-access-token";
 import { notifyMeetingSupport } from "@/lib/notify";
 import { getBookingStore } from "@/lib/sheets";
 import { logUsage } from "@/lib/usage-log";
@@ -84,9 +85,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     if (!updated) {
       return NextResponse.json({ error: "ไม่พบรายการจองนี้" }, { status: 404 });
     }
+    const accessToken = await getGmailAccessToken(request);
     await Promise.all([
       notifyMeetingSupport(updated, "updated"),
-      notifyBookerByEmail(updated, "updated"),
+      notifyBookerByEmail(updated, "updated", accessToken),
     ]);
     await logUsage({
       email: user.email,
@@ -102,7 +104,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: Context) {
+export async function DELETE(request: NextRequest, { params }: Context) {
   try {
     const user = await getCurrentUser();
     if (!user) throw new UnauthorizedError();
@@ -126,7 +128,8 @@ export async function DELETE(_request: NextRequest, { params }: Context) {
     }
 
     await store.remove(id);
-    await notifyBookerByEmail(booking, "cancelled");
+    const accessToken = await getGmailAccessToken(request);
+    await notifyBookerByEmail(booking, "cancelled", accessToken);
     await logUsage({
       email: user.email,
       name: user.name,

@@ -51,6 +51,8 @@ export type SessionUser = {
   email: string;
   name: string;
   avatarUrl?: string;
+  /** ผู้ใช้ให้สิทธิ์ส่งอีเมลผ่าน Gmail แล้วหรือไม่ */
+  emailConnected?: boolean;
 };
 
 export const OPEN_HOUR = 8;

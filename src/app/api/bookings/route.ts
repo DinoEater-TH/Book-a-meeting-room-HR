@@ -4,6 +4,7 @@ import { isAdmin, requireUser, UnauthorizedError } from "@/lib/auth";
 import { parseBookingInput, toNewBooking } from "@/lib/bookings";
 import { isISODate, monthRange, todayISO } from "@/lib/dates";
 import { notifyBookerByEmail } from "@/lib/email";
+import { getGmailAccessToken } from "@/lib/google-access-token";
 import { notifyMeetingSupport } from "@/lib/notify";
 import { getBookingStore } from "@/lib/sheets";
 import { logUsage } from "@/lib/usage-log";
@@ -79,9 +80,10 @@ export async function POST(request: NextRequest) {
     }
 
     const booking = await store.create(toNewBooking(parsed.value, user));
+    const accessToken = await getGmailAccessToken(request);
     await Promise.all([
       notifyMeetingSupport(booking, "created"),
-      notifyBookerByEmail(booking, "created"),
+      notifyBookerByEmail(booking, "created", accessToken),
     ]);
     await logUsage({
       email: user.email,

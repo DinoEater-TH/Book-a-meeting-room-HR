@@ -168,6 +168,13 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
           </div>
         )}
 
+        {!user.emailConnected && (
+          <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+            <strong className="font-semibold">เปิดใช้งานอีเมลแจ้งผลการจอง:</strong>{" "}
+            กด “ออกจากระบบ” แล้วล็อกอินใหม่อีกครั้ง เพื่ออนุญาตให้ระบบส่งอีเมลจาก Gmail ของคุณ
+          </div>
+        )}
+
         <div className="card mb-6 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
             <p className="text-xs font-medium text-slate-500">วันที่ที่กำลังดู</p>

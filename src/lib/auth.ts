@@ -37,7 +37,11 @@ export function isAdmin(email: string | null | undefined): boolean {
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   if (!authConfigured()) {
-    return { email: "dev@kku.ac.th", name: "ผู้ใช้ทดลอง (โหมดพัฒนา)" };
+    return {
+      email: "dev@kku.ac.th",
+      name: "ผู้ใช้ทดลอง (โหมดพัฒนา)",
+      emailConnected: true,
+    };
   }
 
   const session = await auth();
@@ -48,6 +52,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     email: email!,
     name: session?.user?.name?.trim() || email!.split("@")[0],
     avatarUrl: session?.user?.image ?? undefined,
+    emailConnected: Boolean(session?.emailConnected),
   };
 }
 
