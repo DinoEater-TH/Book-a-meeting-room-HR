@@ -42,7 +42,8 @@ async function sendViaGmail(
       body: JSON.stringify({ raw: Buffer.from(message, "utf8").toString("base64url") }),
     });
     if (!res.ok) {
-      console.error("[email] Gmail ตอบกลับสถานะ", res.status);
+      const detail = await res.text().catch(() => "");
+      console.error("[email] Gmail ตอบกลับสถานะ", res.status, detail.slice(0, 500));
       return false;
     }
     return true;
