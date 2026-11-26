@@ -1,7 +1,8 @@
 /**
  * Creates/updates one readable monthly summary tab per month that has bookings.
- * The tab names start with "สรุป " so the original 14 calendar tabs are never
- * touched. Source of truth is the single `Bookings` tab.
+ * The tab names start with "สรุป " so this report script never rewrites the
+ * original calendar tabs. At runtime the app also mirrors bookings into those
+ * legacy tabs (creating them when missing); `Bookings` remains the source of truth.
  *
  *   npm run report:monthly -- --dry-run   # preview using .data/bookings.json
  *   npm run report:monthly                # create/refresh tabs in Google Sheets

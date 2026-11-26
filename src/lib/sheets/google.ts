@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { SPREADSHEET_ID } from "../config";
+import { THAI_MONTHS } from "../dates";
 import { CLOSE_HOUR, OPEN_HOUR, type Booking, type NewBooking } from "../types";
 import {
   bookingToRow,
@@ -12,6 +13,18 @@ import {
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
+/** Marker row used to find and rebuild our own block inside a legacy tab. */
+const LEGACY_BLOCK_HEADER = "การจองจากแอป";
+/** Legacy tabs only render 08:00–17:00; we extend the app block to 24:00. */
+const LEGACY_HOURS = Array.from(
+  { length: CLOSE_HOUR - OPEN_HOUR },
+  (_, index) => OPEN_HOUR + index,
+);
+const LEGACY_LAST_COLUMN = 2 + LEGACY_HOURS.length + 3; // date, title, hours, requester, id, note
+const LEGACY_PINK = { red: 244 / 255, green: 204 / 255, blue: 204 / 255 };
+const LEGACY_GRAY = { red: 217 / 255, green: 217 / 255, blue: 217 / 255 };
+const LEGACY_WHITE = { red: 1, green: 1, blue: 1 };
+
 function requiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing environment variable: ${name}`);
@@ -23,7 +36,9 @@ function requiredEnv(name: string): string {
  *
  * The spreadsheet must be shared with the service account email as "Editor".
  * All bookings live in a single normalised tab (default: "Bookings") so that
- * concurrent reads/writes stay simple and conflict checks are cheap.
+ * concurrent reads/writes stay simple and conflict checks are cheap. A readable
+ * copy is mirrored into the original monthly tabs (created when missing) so
+ * the legacy sheets stay useful alongside the app.
  */
 export class GoogleSheetBookingStore implements BookingStore {
   readonly isMock = false;
@@ -125,16 +140,206 @@ export class GoogleSheetBookingStore implements BookingStore {
   }
 
   private monthlyTitle(isoDate: string): string {
-    const months = [
-      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
-    ];
     const [year, month] = isoDate.split("-").map(Number);
     const shortYear = String((year + 543) % 100).padStart(2, "0");
-    return `สรุป ${months[month - 1]} ${shortYear}`;
+    return `สรุป ${THAI_MONTHS[month - 1]} ${shortYear}`;
   }
 
-  /** Rebuilds the human-readable summary tab for one month. Never touches legacy tabs. */
+  /**
+   * Existing legacy tabs use several year formats (full B.E., short B.E., or
+   * no year at all). Match them after collapsing repeated spaces.
+   */
+  private legacyTitleVariants(isoDate: string): string[] {
+    const [year, month] = isoDate.split("-").map(Number);
+    const name = THAI_MONTHS[month - 1] ?? "";
+    if (!name) return [];
+    const shortYear = String((year + 543) % 100).padStart(2, "0");
+    return [`${name} ${year + 543}`, `${name} ${shortYear}`, name];
+  }
+
+  private static normalizeSheetTitle(title: string): string {
+    return title.replace(/\s+/g, " ").trim();
+  }
+
+  private async ensureLegacySheet(isoDate: string): Promise<{ sheetId: number; title: string }> {
+    const variants = this.legacyTitleVariants(isoDate);
+    if (variants.length === 0) throw new Error(`Invalid month in date: ${isoDate}`);
+
+    const meta = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+      fields: "sheets.properties(sheetId,title)",
+    });
+    const sheets = meta.data.sheets ?? [];
+
+    for (const variant of variants) {
+      const wanted = GoogleSheetBookingStore.normalizeSheetTitle(variant);
+      const found = sheets.find(
+        (sheet) =>
+          sheet.properties?.title &&
+          GoogleSheetBookingStore.normalizeSheetTitle(sheet.properties.title) === wanted,
+      );
+      const foundTitle = found?.properties?.title;
+      if (found?.properties?.sheetId != null && foundTitle) {
+        return { sheetId: found.properties.sheetId, title: foundTitle };
+      }
+    }
+
+    const title = variants[0];
+    const created = await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+    });
+    const sheetId = created.data.replies?.[0]?.addSheet?.properties?.sheetId;
+    if (sheetId == null) throw new Error(`Could not create legacy tab: ${title}`);
+    return { sheetId, title };
+  }
+
+  private legacyDateLabel(isoDate: string): string {
+    const [year, month, day] = isoDate.split("-").map(Number);
+    return `${day} ${THAI_MONTHS[month - 1] ?? ""} ${year + 543}`;
+  }
+
+  /**
+   * Mirrors every booking for one month into the original monthly tab. The
+   * app-owned block is rebuilt from `Bookings` each time, so edits and deletes
+   * clean up their own shading without touching the staff's older rows above.
+   * Bookings that touch two hours (e.g. 09:01–10:53) shade both hour columns.
+   */
+  private async syncLegacyMonth(isoDate: string): Promise<void> {
+    const { sheetId, title } = await this.ensureLegacySheet(isoDate);
+    const escapedTitle = title.replace(/'/g, "''");
+    const tab = `'${escapedTitle}'`;
+
+    const current = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${tab}!A1:U`,
+    });
+    const values = (current.data.values ?? []) as string[][];
+    const markerIndex = values.findIndex(
+      (row) => String(row[0] ?? "").trim() === LEGACY_BLOCK_HEADER,
+    );
+    const startRow =
+      markerIndex >= 0 ? markerIndex : values.length === 0 ? 0 : values.length + 1;
+
+    if (markerIndex >= 0) {
+      const endRow = Math.max(values.length, markerIndex + 1);
+      await this.sheets.spreadsheets.values.clear({
+        spreadsheetId: this.spreadsheetId,
+        range: `${tab}!A${markerIndex + 1}:U${endRow}`,
+      });
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              repeatCell: {
+                range: {
+                  sheetId,
+                  startRowIndex: markerIndex,
+                  endRowIndex: endRow,
+                  startColumnIndex: 0,
+                  endColumnIndex: LEGACY_LAST_COLUMN,
+                },
+                cell: { userEnteredFormat: { backgroundColor: LEGACY_WHITE } },
+                fields: "userEnteredFormat.backgroundColor",
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    const monthPrefix = isoDate.slice(0, 7);
+    const bookings = (await this.list())
+      .filter((booking) => booking.date.startsWith(monthPrefix))
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          a.startHour - b.startHour ||
+          a.roomId.localeCompare(b.roomId),
+      );
+
+    const rows: string[][] = [
+      [LEGACY_BLOCK_HEADER],
+      [
+        "วันที่",
+        "วัตถุประสงค์",
+        ...LEGACY_HOURS.map((hour) => `${String(hour).padStart(2, "0")}:00`),
+        "ผู้ขอใช้ห้อง",
+        "รหัสจอง",
+        "หมายเหตุ",
+      ],
+    ];
+    if (bookings.length === 0) rows.push(["ยังไม่มีการจองจากแอป"]);
+
+    const shaded: Array<{ row: number; column: number }> = [];
+    bookings.forEach((booking, index) => {
+      const cells = Array(LEGACY_LAST_COLUMN).fill("");
+      cells[0] = this.legacyDateLabel(booking.date);
+      cells[1] = booking.title;
+      cells[LEGACY_LAST_COLUMN - 3] = booking.requesterName || booking.requesterEmail;
+      cells[LEGACY_LAST_COLUMN - 2] = booking.id;
+      cells[LEGACY_LAST_COLUMN - 1] = booking.note ?? "";
+
+      const firstHour = Math.max(OPEN_HOUR, Math.floor(booking.startHour));
+      const lastHour = Math.min(CLOSE_HOUR, Math.ceil(booking.endHour));
+      for (let hour = firstHour; hour < lastHour; hour += 1) {
+        const column = 2 + (hour - OPEN_HOUR);
+        cells[column] = "●";
+        shaded.push({ row: startRow + 2 + index, column });
+      }
+      rows.push(cells);
+    });
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: `${tab}!A${startRow + 1}`,
+      valueInputOption: "RAW",
+      requestBody: { values: rows },
+    });
+
+    const headerRequests: object[] = [
+      {
+        repeatCell: {
+          range: {
+            sheetId,
+            startRowIndex: startRow,
+            endRowIndex: startRow + 2,
+            startColumnIndex: 0,
+            endColumnIndex: LEGACY_LAST_COLUMN,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: LEGACY_GRAY,
+              textFormat: { bold: true },
+            },
+          },
+          fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
+        },
+      },
+    ];
+    for (const cell of shaded) {
+      headerRequests.push({
+        repeatCell: {
+          range: {
+            sheetId,
+            startRowIndex: cell.row,
+            endRowIndex: cell.row + 1,
+            startColumnIndex: cell.column,
+            endColumnIndex: cell.column + 1,
+          },
+          cell: { userEnteredFormat: { backgroundColor: LEGACY_PINK } },
+          fields: "userEnteredFormat.backgroundColor",
+        },
+      });
+    }
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: { requests: headerRequests },
+    });
+  }
+
+  /** Rebuilds the human-readable `สรุป ...` summary tab for one month. */
   private async refreshMonthlyTab(isoDate: string): Promise<void> {
     const title = this.monthlyTitle(isoDate);
     const monthPrefix = isoDate.slice(0, 7);
@@ -260,6 +465,14 @@ export class GoogleSheetBookingStore implements BookingStore {
     }
   }
 
+  private async safeSyncLegacy(isoDate: string): Promise<void> {
+    try {
+      await this.syncLegacyMonth(isoDate);
+    } catch (error) {
+      console.error(`[sheets] ไม่สามารถซิงค์ข้อมูลไปแท็บเดิม ${isoDate}`, error);
+    }
+  }
+
   async create(input: NewBooking): Promise<Booking> {
     await this.ensureTab();
 
@@ -278,6 +491,7 @@ export class GoogleSheetBookingStore implements BookingStore {
     });
 
     await this.safeRefresh(booking.date);
+    await this.safeSyncLegacy(booking.date);
     return booking;
   }
 
@@ -314,7 +528,11 @@ export class GoogleSheetBookingStore implements BookingStore {
     });
 
     await this.safeRefresh(existing.date);
-    if (updated.date !== existing.date) await this.safeRefresh(updated.date);
+    await this.safeSyncLegacy(existing.date);
+    if (updated.date !== existing.date) {
+      await this.safeRefresh(updated.date);
+      await this.safeSyncLegacy(updated.date);
+    }
     return updated;
   }
 
@@ -323,14 +541,14 @@ export class GoogleSheetBookingStore implements BookingStore {
 
     const res = await this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
-      range: `${this.quotedTab}!A2:A`,
+      range: `${this.quotedTab}!A2:O`,
     });
 
-    const ids = ((res.data.values ?? []) as string[][]).map((row) => String(row[0] ?? ""));
-    const offset = ids.findIndex((value) => value === id);
+    const rows = (res.data.values ?? []) as string[][];
+    const offset = rows.findIndex((row) => String(row[0] ?? "") === id);
     if (offset === -1) return;
 
-    const removedDate = String(res.data.values?.[offset]?.[2] ?? "");
+    const removedDate = String(rows[offset]?.[2] ?? "");
 
     // +1 for the header row
     const rowIndex = offset + 1;
@@ -353,6 +571,9 @@ export class GoogleSheetBookingStore implements BookingStore {
       },
     });
 
-    if (removedDate) await this.safeRefresh(removedDate);
+    if (removedDate) {
+      await this.safeRefresh(removedDate);
+      await this.safeSyncLegacy(removedDate);
+    }
   }
 }
