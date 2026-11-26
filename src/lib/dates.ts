@@ -64,21 +64,24 @@ export function parseISODate(iso: string): Date {
 /** The app is used in Thailand; never rely on the host machine's time zone. */
 const THAILAND_TIME_ZONE = "Asia/Bangkok";
 
-export function bangkokNow(): { date: string; hour: number } {
+export function bangkokNow(): { date: string; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: THAILAND_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
+    minute: "2-digit",
     hourCycle: "h23",
   }).formatToParts(new Date());
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? "";
   const hour = Number(part("hour"));
+  const minute = Number(part("minute"));
   return {
     date: `${part("year")}-${part("month")}-${part("day")}`,
     hour: Number.isFinite(hour) ? hour : 0,
+    minute: Number.isFinite(minute) ? minute : 0,
   };
 }
 
@@ -86,13 +89,14 @@ export function todayISO(): string {
   return bangkokNow().date;
 }
 
-/** True when a slot's start hour has already begun in Thailand. */
+/** True when a 30-minute slot has already begun in Thailand. */
 export function isPastSlot(date: string, startHour: number): boolean {
   if (!isISODate(date)) return false;
   const now = bangkokNow();
   if (date < now.date) return true;
   if (date > now.date) return false;
-  return startHour <= now.hour;
+  // At 09:17 the 09:00 slot is gone, but 09:30 is still bookable.
+  return startHour <= now.hour + now.minute / 60;
 }
 
 export function addDays(iso: string, days: number): string {
@@ -158,7 +162,10 @@ export function relativeDayLabel(iso: string): string | null {
 }
 
 export function hourLabel(hour: number): string {
-  return `${String(hour).padStart(2, "0")}:00`;
+  const totalMinutes = Math.round(hour * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 export function rangeLabel(startHour: number, endHour: number): string {

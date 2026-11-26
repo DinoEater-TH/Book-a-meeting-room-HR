@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Booking, RoomId, SessionUser } from "@/lib/types";
+import { SLOT_HOURS, type Booking, type RoomId, type SessionUser } from "@/lib/types";
 import { ROOMS, getRoom } from "@/lib/rooms";
 import {
   addDays,
   formatThaiDate,
   isPastSlot,
+  rangeLabel,
   relativeDayLabel,
   todayISO,
   weekdayName,
@@ -33,7 +34,7 @@ type Props = {
 };
 
 function timeLabel(booking: Booking): string {
-  return `${String(booking.startHour).padStart(2, "0")}:00–${String(booking.endHour).padStart(2, "0")}:00`;
+  return rangeLabel(booking.startHour, booking.endHour);
 }
 
 export default function BookingBoard({ user, initialBookings, isMock, backendName, isAdminUser }: Props) {
@@ -299,7 +300,8 @@ export default function BookingBoard({ user, initialBookings, isMock, backendNam
             onDayClick={(selectedDate) => {
               if (selectedDate < todayISO()) return;
               setDate(selectedDate);
-              setDialog({ type: "create", roomId: "room10", hour: 8 });
+              const firstSlot = SLOT_HOURS.find((slot) => !isPastSlot(selectedDate, slot)) ?? 8;
+              setDialog({ type: "create", roomId: "room10", hour: firstSlot });
             }}
           />
         ) : (

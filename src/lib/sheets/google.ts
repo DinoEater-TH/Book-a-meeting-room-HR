@@ -165,7 +165,8 @@ export class GoogleSheetBookingStore implements BookingStore {
         cells[cells.length - 2] = booking.requesterName;
         cells[cells.length - 1] = booking.note ?? "";
         for (const hour of hours) {
-          if (hour >= booking.startHour && hour < booking.endHour) {
+          // A 30-minute booking still shades the hours it touches.
+          if (booking.startHour < hour + 1 && booking.endHour > hour) {
             const column = 2 + (hour - OPEN_HOUR);
             cells[column] = "●";
             shaded.push({ row: cursor, column });

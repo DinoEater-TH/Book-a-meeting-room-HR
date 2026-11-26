@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdmin, requireUser, UnauthorizedError } from "@/lib/auth";
 import { parseBookingInput, toNewBooking } from "@/lib/bookings";
-import { isISODate, monthRange, todayISO } from "@/lib/dates";
+import { hourLabel, isISODate, monthRange, todayISO } from "@/lib/dates";
 import { notifyBookerByEmail } from "@/lib/email";
 import { getGmailAccessToken } from "@/lib/google-access-token";
 import { notifyMeetingSupport } from "@/lib/notify";
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     if (conflict) {
       return NextResponse.json(
         {
-          error: `ช่วงเวลานี้ถูกจองแล้ว: ${conflict.title} (${String(conflict.startHour).padStart(2, "0")}:00–${String(conflict.endHour).padStart(2, "0")}:00)`,
+          error: `ช่วงเวลานี้ถูกจองแล้ว: ${conflict.title} (${hourLabel(conflict.startHour)}–${hourLabel(conflict.endHour)})`,
         },
         { status: 409 },
       );
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       action: "สร้างการจอง",
-      detail: `${booking.title} · ${booking.date} ${String(booking.startHour).padStart(2, "0")}:00–${String(booking.endHour).padStart(2, "0")}:00`,
+      detail: `${booking.title} · ${booking.date} ${hourLabel(booking.startHour)}–${hourLabel(booking.endHour)}`,
     });
     revalidatePath("/book");
 

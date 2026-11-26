@@ -5,9 +5,9 @@ export type Booking = {
   roomId: RoomId;
   /** ISO date, e.g. "2026-11-24" */
   date: string;
-  /** Start hour in 24h format, 8..23 */
+  /** Start time in hours; 9.5 means 09:30. Range 8..23.5 */
   startHour: number;
-  /** End hour (exclusive), 9..24 */
+  /** End time (exclusive) in hours; 24 means 24:00 */
   endHour: number;
   /** วัตถุประสงค์การใช้ห้อง */
   title: string;
@@ -57,17 +57,32 @@ export type SessionUser = {
 
 export const OPEN_HOUR = 8;
 export const CLOSE_HOUR = 24;
+/** Bookings can start or end every 30 minutes. */
+export const SLOT_STEP = 0.5;
 
-/** Hours that can start a booking: 08:00 - 23:00 */
+/** Every 30-minute start time from 08:00 to 23:30. */
 export const SLOT_HOURS: number[] = Array.from(
+  { length: Math.round((CLOSE_HOUR - OPEN_HOUR) / SLOT_STEP) },
+  (_, i) => OPEN_HOUR + i * SLOT_STEP,
+);
+
+/** Hour rows drawn in the day timeline; each row holds two 30-minute slots. */
+export const HOUR_ROWS: number[] = Array.from(
   { length: CLOSE_HOUR - OPEN_HOUR },
   (_, i) => OPEN_HOUR + i,
 );
 
+function isSlotTime(value: number): boolean {
+  return (
+    Number.isFinite(value) &&
+    Math.abs(value / SLOT_STEP - Math.round(value / SLOT_STEP)) < 1e-9
+  );
+}
+
 export function isValidSlotRange(startHour: number, endHour: number): boolean {
   return (
-    Number.isInteger(startHour) &&
-    Number.isInteger(endHour) &&
+    isSlotTime(startHour) &&
+    isSlotTime(endHour) &&
     startHour >= OPEN_HOUR &&
     endHour <= CLOSE_HOUR &&
     endHour > startHour

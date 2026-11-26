@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Booking, RoomId } from "@/lib/types";
-import { CLOSE_HOUR, OPEN_HOUR, overlaps, SLOT_HOURS } from "@/lib/types";
+import { CLOSE_HOUR, OPEN_HOUR, overlaps, SLOT_HOURS, SLOT_STEP } from "@/lib/types";
 import { isLegacyBooking, isUnnamedBooking } from "@/lib/bookings";
 import { formatThaiDate, hourLabel, isPastSlot, rangeLabel, todayISO } from "@/lib/dates";
 import { ROOMS, type Room } from "@/lib/rooms";
@@ -303,7 +303,7 @@ function BookingForm({
                   const first = SLOT_HOURS.find((hour) => !isPastSlot(value, hour));
                   if (first !== undefined) {
                     setStartHour(first);
-                    setEndHour(first + 1);
+                    setEndHour(first + SLOT_STEP);
                   }
                 }}
                 className={inputClass}
@@ -319,7 +319,7 @@ function BookingForm({
                 onChange={(event) => {
                   const value = Number(event.target.value);
                   setStartHour(value);
-                  if (endHour <= value) setEndHour(Math.min(value + 1, CLOSE_HOUR));
+                  if (endHour <= value) setEndHour(Math.min(value + SLOT_STEP, CLOSE_HOUR));
                 }}
                 className={inputClass}
               >
@@ -336,7 +336,10 @@ function BookingForm({
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate-600">เวลาสิ้นสุด</span>
               <select value={endHour} onChange={(event) => setEndHour(Number(event.target.value))} className={inputClass}>
-                {Array.from({ length: CLOSE_HOUR - startHour }, (_, i) => startHour + i + 1).map((hour) => (
+                {Array.from(
+                  { length: Math.round((CLOSE_HOUR - startHour) / SLOT_STEP) },
+                  (_, i) => startHour + (i + 1) * SLOT_STEP,
+                ).map((hour) => (
                   <option key={hour} value={hour}>
                     {hourLabel(hour)}
                   </option>
@@ -532,7 +535,7 @@ export default function BookingDialog(props: CreateProps | DetailProps) {
       initialRoomId={props.room.id}
       initialDate={props.date}
       initialHour={props.initialHour}
-      initialEndHour={Math.min(props.initialHour + 1, CLOSE_HOUR)}
+      initialEndHour={Math.min(props.initialHour + SLOT_STEP, CLOSE_HOUR)}
       allBookings={props.dayBookings}
       submitLabel="ยืนยันการจอง"
       busyLabel="กำลังจอง..."

@@ -10,6 +10,7 @@ import {
   formatThaiMonthYear,
   monthRange,
   parseISODate,
+  rangeLabel,
   todayISO,
 } from "@/lib/dates";
 import { paletteForEmail, type BookingPalette } from "@/lib/colors";
@@ -24,7 +25,7 @@ type Props = {
 type View = "week" | "month";
 
 function timeLabel(booking: Booking): string {
-  return `${String(booking.startHour).padStart(2, "0")}:00–${String(booking.endHour).padStart(2, "0")}:00`;
+  return rangeLabel(booking.startHour, booking.endHour);
 }
 
 function requesterLabel(booking: Booking): string {

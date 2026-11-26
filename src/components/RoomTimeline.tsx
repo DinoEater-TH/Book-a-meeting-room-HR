@@ -1,7 +1,7 @@
 "use client";
 
 import type { Booking, RoomId } from "@/lib/types";
-import { SLOT_HOURS, OPEN_HOUR, CLOSE_HOUR } from "@/lib/types";
+import { HOUR_ROWS, OPEN_HOUR, CLOSE_HOUR, SLOT_STEP } from "@/lib/types";
 import { hourLabel, isPastSlot, rangeLabel } from "@/lib/dates";
 import { paletteForEmail, type BookingPalette } from "@/lib/colors";
 import type { Room } from "@/lib/rooms";
@@ -50,8 +50,10 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
   function handleGridClick(event: React.MouseEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const offset = event.clientY - rect.top;
-    const index = Math.floor(offset / SLOT_HEIGHT);
-    const hour = OPEN_HOUR + Math.max(0, Math.min(SLOT_HOURS.length - 1, index));
+    const row = Math.max(0, Math.min(HOUR_ROWS.length - 1, Math.floor(offset / SLOT_HEIGHT)));
+    const withinRow = offset - row * SLOT_HEIGHT;
+    const hour = OPEN_HOUR + row + (withinRow >= SLOT_HEIGHT / 2 ? SLOT_STEP : 0);
+    if (hour >= CLOSE_HOUR) return;
     if (date && isPastSlot(date, hour)) return;
     onSlotClick(room.id, hour);
   }
@@ -87,13 +89,14 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
       <div className="px-4 py-4 sm:px-5">
         <div className="flex gap-2">
           <div className="w-12 shrink-0 pt-0 sm:w-14">
-            {SLOT_HOURS.map((hour) => (
+            {HOUR_ROWS.map((hour) => (
               <div
                 key={hour}
                 style={{ height: SLOT_HEIGHT }}
-                className="flex items-center justify-end pr-1 text-xs font-medium tabular-nums text-slate-400"
+                className="flex flex-col items-end justify-between py-0.5 pr-1 text-right leading-none tabular-nums"
               >
-                {hourLabel(hour)}
+                <span className="text-xs font-medium text-slate-400">{hourLabel(hour)}</span>
+                <span className="text-[10px] text-slate-300">{hourLabel(hour + SLOT_STEP)}</span>
               </div>
             ))}
           </div>
@@ -104,18 +107,21 @@ export default function RoomTimeline({ room, date, bookings, paletteByEmail, onS
             onClick={handleGridClick}
             className="relative flex-1 cursor-crosshair overflow-hidden rounded-xl border border-brand-100 bg-brand-50/80"
           >
-            {SLOT_HOURS.map((hour) => {
-              const past = Boolean(date && isPastSlot(date, hour));
+            {Array.from({ length: HOUR_ROWS.length * 2 }, (_, index) => {
+              const slot = OPEN_HOUR + index * SLOT_STEP;
+              const past = Boolean(date && isPastSlot(date, slot));
               return (
                 <div
-                  key={hour}
-                  style={{ height: SLOT_HEIGHT }}
-                  className={`border-b border-dashed last:border-b-0 ${
+                  key={slot}
+                  style={{ height: SLOT_HEIGHT / 2 }}
+                  className={`border-b last:border-b-0 ${
+                    index % 2 === 0 ? "border-brand-100" : "border-dashed border-brand-50"
+                  } ${
                     past
-                      ? "border-brand-50 bg-brand-100/80"
-                      : hour % 2 === 0
-                        ? "border-brand-100 bg-white/40"
-                        : "border-brand-100"
+                      ? "bg-brand-100/80"
+                      : Math.floor(slot) % 2 === 0
+                        ? "bg-white/40"
+                        : ""
                   }`}
                 />
               );
