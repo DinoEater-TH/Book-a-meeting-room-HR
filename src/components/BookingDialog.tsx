@@ -66,9 +66,9 @@ function ModalShell({ children, onClose }: { children: React.ReactNode; onClose:
         role="dialog"
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
-        className="animate-pop-in max-h-[100dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-6 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
+        className="animate-pop-in flex max-h-[100dvh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
       >
-        {children}
+        <div className="overflow-y-auto overscroll-contain p-6">{children}</div>
       </div>
       <button type="button" aria-label="ปิด" onClick={onClose} className="sr-only">
         ปิด
