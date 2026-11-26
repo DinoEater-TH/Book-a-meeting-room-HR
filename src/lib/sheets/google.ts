@@ -1,7 +1,7 @@
 import { google } from "googleapis";
 import { SPREADSHEET_ID } from "../config";
 import { THAI_MONTHS } from "../dates";
-import { CLOSE_HOUR, OPEN_HOUR, type Booking, type NewBooking } from "../types";
+import { CLOSE_HOUR, OPEN_HOUR, type Booking, type NewBooking, type RoomId } from "../types";
 import {
   bookingToRow,
   newId,
@@ -24,6 +24,38 @@ const LEGACY_LAST_COLUMN = 2 + LEGACY_HOURS.length + 3; // date, title, hours, r
 const LEGACY_PINK = { red: 244 / 255, green: 204 / 255, blue: 204 / 255 };
 const LEGACY_GRAY = { red: 217 / 255, green: 217 / 255, blue: 217 / 255 };
 const LEGACY_WHITE = { red: 1, green: 1, blue: 1 };
+/** The yellow divider row names the room that owns the rows underneath it. */
+const LEGACY_YELLOW = { red: 1, green: 1, blue: 0 };
+const LEGACY_ROOMS = [
+  { id: "room10" as const, name: "ห้องประชุมกาลพฤกษ์ 10" },
+  { id: "smart" as const, name: "ห้อง SMART Meeting" },
+];
+
+type LegacyCellFormat = {
+  userEnteredFormat?: {
+    backgroundColor?: { red?: number | null; green?: number | null; blue?: number | null } | null;
+  } | null;
+};
+type LegacyGridRow = { values?: Array<LegacyCellFormat | null> | null };
+type LegacySection = {
+  roomId: RoomId;
+  name: string;
+  headerRow: number;
+  dataStartRow: number;
+  endRow: number;
+};
+
+function legacyBackground(row: LegacyGridRow | undefined, column: number): string {
+  const color = row?.values?.[column]?.userEnteredFormat?.backgroundColor;
+  if (!color) return "";
+  return [color.red, color.green, color.blue]
+    .map((value) => Math.round((value ?? 0) * 255))
+    .join(",");
+}
+
+function legacyRowHasValue(row: string[] | undefined): boolean {
+  return (row ?? []).some((cell) => String(cell ?? "").trim() !== "");
+}
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -199,55 +231,181 @@ export class GoogleSheetBookingStore implements BookingStore {
     return `${day} ${THAI_MONTHS[month - 1] ?? ""} ${year + 543}`;
   }
 
+  private async readLegacySheet(
+    tab: string,
+  ): Promise<{ values: string[][]; grid: LegacyGridRow[] }> {
+    const valuesRes = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${tab}!A1:U1000`,
+    });
+    const meta = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+      ranges: [`${tab}!A1:U1000`],
+      fields: "sheets(data(rowData(values(userEnteredFormat(backgroundColor)))))",
+    });
+    return {
+      values: (valuesRes.data.values ?? []) as string[][],
+      grid: (meta.data.sheets?.[0]?.data?.[0]?.rowData ?? []) as unknown as LegacyGridRow[],
+    };
+  }
+
+  /** Yellow rows that actually name a room are the section dividers. */
+  private detectLegacySections(values: string[][], grid: LegacyGridRow[]): LegacySection[] {
+    const headers: Array<{ roomId: RoomId; name: string; row: number }> = [];
+    values.forEach((row, index) => {
+      const isYellow =
+        legacyBackground(grid[index], 0) === "255,255,0" ||
+        row.some((_, column) => legacyBackground(grid[index], column) === "255,255,0");
+      if (!isYellow) return;
+      const room = LEGACY_ROOMS.find((item) =>
+        row.some((cell) => String(cell ?? "").trim() === item.name),
+      );
+      if (room) headers.push({ roomId: room.id, name: room.name, row: index });
+    });
+    headers.sort((a, b) => a.row - b.row);
+
+    return headers.map((header, index) => {
+      const nextHeader = headers[index + 1]?.row ?? values.length;
+      let hourRow = header.row + 1;
+      for (let row = header.row + 1; row < nextHeader; row += 1) {
+        const hourLabels = LEGACY_HOURS.slice(0, 10).filter((hour) =>
+          /^\d{1,2}:\d{2}$/.test(String(values[row]?.[2 + (hour - OPEN_HOUR)] ?? "").trim()),
+        );
+        if (hourLabels.length >= 2) {
+          hourRow = row;
+          break;
+        }
+      }
+      return {
+        roomId: header.roomId,
+        name: header.name,
+        headerRow: header.row,
+        dataStartRow: hourRow + 1,
+        endRow: Math.max(index + 1 < headers.length ? nextHeader - 1 : values.length - 1, hourRow),
+      };
+    });
+  }
+
+  private legacyLabelRow(isoDate: string): string[] {
+    const [year, month] = isoDate.split("-").map(Number);
+    const row = Array(13).fill("");
+    row[0] = THAI_MONTHS[month - 1] ?? "";
+    row[1] = "วัตถุประสงค์การใช้ห้อง";
+    row[2] = "เวลา";
+    row[12] = `ผู้ขอใช้ห้อง (ปี ${year + 543})`;
+    return row;
+  }
+
+  private legacyHourRow(): string[] {
+    const row = Array(13).fill("");
+    LEGACY_HOURS.slice(0, 10).forEach((hour) => {
+      row[2 + (hour - OPEN_HOUR)] = `${hour}:00`;
+    });
+    return row;
+  }
+
+  /** Builds the two yellow room dividers when a monthly tab does not exist yet. */
+  private async createLegacyTemplate(sheetId: number, tab: string, isoDate: string): Promise<void> {
+    const rows: string[][] = [
+      [LEGACY_ROOMS[0].name],
+      this.legacyLabelRow(isoDate),
+      this.legacyHourRow(),
+    ];
+    for (let index = 0; index < 18; index += 1) rows.push([]);
+    const smartHeaderRow = rows.length;
+    rows.push([LEGACY_ROOMS[1].name], this.legacyLabelRow(isoDate), this.legacyHourRow());
+    for (let index = 0; index < 18; index += 1) rows.push([]);
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: `${tab}!A1`,
+      valueInputOption: "RAW",
+      requestBody: { values: rows },
+    });
+
+    const grayRows = [1, 2, smartHeaderRow + 1, smartHeaderRow + 2];
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: {
+        requests: [
+          ...[0, smartHeaderRow].map((row) => ({
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: row,
+                endRowIndex: row + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 1,
+              },
+              cell: { userEnteredFormat: { backgroundColor: LEGACY_YELLOW, textFormat: { bold: true } } },
+              fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
+            },
+          })),
+          ...grayRows.map((row) => ({
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: row,
+                endRowIndex: row + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 13,
+              },
+              cell: { userEnteredFormat: { backgroundColor: LEGACY_GRAY, textFormat: { bold: true } } },
+              fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
+            },
+          })),
+        ],
+      },
+    });
+  }
+
   /**
-   * Mirrors every booking for one month into the original monthly tab. The
-   * app-owned block is rebuilt from `Bookings` each time, so edits and deletes
-   * clean up their own shading without touching the staff's older rows above.
-   * Bookings that touch two hours (e.g. 09:01–10:53) shade both hour columns.
+   * Mirrors every booking for one month into the original monthly tab, under
+   * the yellow room divider that owns it. Column M receives the booker's email.
+   * The app-owned rows are rebuilt from `Bookings` on every change, so edits
+   * and deletes clean up their own shading. A booking that touches two hours
+   * (e.g. 09:01–10:53) shades both hour columns.
    */
   private async syncLegacyMonth(isoDate: string): Promise<void> {
     const { sheetId, title } = await this.ensureLegacySheet(isoDate);
-    const escapedTitle = title.replace(/'/g, "''");
-    const tab = `'${escapedTitle}'`;
+    const tab = `'${title.replace(/'/g, "''")}'`;
 
-    const current = await this.sheets.spreadsheets.values.get({
-      spreadsheetId: this.spreadsheetId,
-      range: `${tab}!A1:U`,
-    });
-    const values = (current.data.values ?? []) as string[][];
-    const markerIndex = values.findIndex(
-      (row) => String(row[0] ?? "").trim() === LEGACY_BLOCK_HEADER,
-    );
-    const startRow =
-      markerIndex >= 0 ? markerIndex : values.length === 0 ? 0 : values.length + 1;
+    let { values, grid } = await this.readLegacySheet(tab);
+    if (this.detectLegacySections(values, grid).length === 0) {
+      await this.createLegacyTemplate(sheetId, tab, isoDate);
+      ({ values, grid } = await this.readLegacySheet(tab));
+    }
 
-    if (markerIndex >= 0) {
-      const endRow = Math.max(values.length, markerIndex + 1);
-      await this.sheets.spreadsheets.values.clear({
-        spreadsheetId: this.spreadsheetId,
-        range: `${tab}!A${markerIndex + 1}:U${endRow}`,
-      });
+    // Remove only rows this app wrote before, never the staff's own rows.
+    const oldRows = values
+      .map((row, index) => ({ row, index }))
+      .filter(
+        ({ row }) =>
+          String(row[0] ?? "").trim() === LEGACY_BLOCK_HEADER ||
+          String(row[19] ?? "").trim() === "รหัสจอง" ||
+          String(row[19] ?? "").trim().startsWith("bk_") ||
+          String(row[19] ?? "").trim().startsWith("legacy_"),
+      )
+      .map(({ index }) => index);
+    if (oldRows.length > 0) {
       await this.sheets.spreadsheets.batchUpdate({
         spreadsheetId: this.spreadsheetId,
         requestBody: {
-          requests: [
-            {
-              repeatCell: {
-                range: {
-                  sheetId,
-                  startRowIndex: markerIndex,
-                  endRowIndex: endRow,
-                  startColumnIndex: 0,
-                  endColumnIndex: LEGACY_LAST_COLUMN,
-                },
-                cell: { userEnteredFormat: { backgroundColor: LEGACY_WHITE } },
-                fields: "userEnteredFormat.backgroundColor",
+          requests: oldRows
+            .slice()
+            .reverse()
+            .map((index) => ({
+              deleteDimension: {
+                range: { sheetId, dimension: "ROWS", startIndex: index, endIndex: index + 1 },
               },
-            },
-          ],
+            })),
         },
       });
+      ({ values, grid } = await this.readLegacySheet(tab));
     }
+
+    const sections = this.detectLegacySections(values, grid);
+    if (sections.length === 0) throw new Error(`ไม่พบแถวแบ่งห้องใน ${title}`);
 
     const monthPrefix = isoDate.slice(0, 7);
     const bookings = (await this.list())
@@ -259,84 +417,91 @@ export class GoogleSheetBookingStore implements BookingStore {
           a.roomId.localeCompare(b.roomId),
       );
 
-    const rows: string[][] = [
-      [LEGACY_BLOCK_HEADER],
-      [
-        "วันที่",
-        "วัตถุประสงค์",
-        ...LEGACY_HOURS.map((hour) => `${String(hour).padStart(2, "0")}:00`),
-        "ผู้ขอใช้ห้อง",
-        "รหัสจอง",
-        "หมายเหตุ",
-      ],
-    ];
-    if (bookings.length === 0) rows.push(["ยังไม่มีการจองจากแอป"]);
+    // Insert from the last section upwards so earlier row indexes stay valid.
+    for (const section of [...sections].reverse()) {
+      const roomBookings = bookings.filter((booking) => booking.roomId === section.roomId);
+      if (roomBookings.length === 0) continue;
 
-    const shaded: Array<{ row: number; column: number }> = [];
-    bookings.forEach((booking, index) => {
-      const cells = Array(LEGACY_LAST_COLUMN).fill("");
-      cells[0] = this.legacyDateLabel(booking.date);
-      cells[1] = booking.title;
-      cells[LEGACY_LAST_COLUMN - 3] = booking.requesterName || booking.requesterEmail;
-      cells[LEGACY_LAST_COLUMN - 2] = booking.id;
-      cells[LEGACY_LAST_COLUMN - 1] = booking.note ?? "";
-
-      const firstHour = Math.max(OPEN_HOUR, Math.floor(booking.startHour));
-      const lastHour = Math.min(CLOSE_HOUR, Math.ceil(booking.endHour));
-      for (let hour = firstHour; hour < lastHour; hour += 1) {
-        const column = 2 + (hour - OPEN_HOUR);
-        cells[column] = "●";
-        shaded.push({ row: startRow + 2 + index, column });
-      }
-      rows.push(cells);
-    });
-
-    await this.sheets.spreadsheets.values.update({
-      spreadsheetId: this.spreadsheetId,
-      range: `${tab}!A${startRow + 1}`,
-      valueInputOption: "RAW",
-      requestBody: { values: rows },
-    });
-
-    const headerRequests: object[] = [
-      {
-        repeatCell: {
-          range: {
-            sheetId,
-            startRowIndex: startRow,
-            endRowIndex: startRow + 2,
-            startColumnIndex: 0,
-            endColumnIndex: LEGACY_LAST_COLUMN,
-          },
-          cell: {
-            userEnteredFormat: {
-              backgroundColor: LEGACY_GRAY,
-              textFormat: { bold: true },
+      const writeRow = section.endRow + 1; // 0-based insertion point
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              insertDimension: {
+                range: {
+                  sheetId,
+                  dimension: "ROWS",
+                  startIndex: writeRow,
+                  endIndex: writeRow + roomBookings.length,
+                },
+                inheritFromBefore: true,
+              },
             },
-          },
-          fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat",
-        },
-      },
-    ];
-    for (const cell of shaded) {
-      headerRequests.push({
-        repeatCell: {
-          range: {
-            sheetId,
-            startRowIndex: cell.row,
-            endRowIndex: cell.row + 1,
-            startColumnIndex: cell.column,
-            endColumnIndex: cell.column + 1,
-          },
-          cell: { userEnteredFormat: { backgroundColor: LEGACY_PINK } },
-          fields: "userEnteredFormat.backgroundColor",
+          ],
         },
       });
+
+      const rows: string[][] = [];
+      const shaded: Array<{ row: number; column: number }> = [];
+      roomBookings.forEach((booking, index) => {
+        const cells = Array(LEGACY_LAST_COLUMN).fill("");
+        cells[0] = this.legacyDateLabel(booking.date);
+        cells[1] = booking.title;
+        cells[12] = booking.requesterEmail; // column M
+        cells[LEGACY_LAST_COLUMN - 2] = booking.id; // hidden marker in column T
+        cells[LEGACY_LAST_COLUMN - 1] = booking.note ?? "";
+        const firstHour = Math.max(OPEN_HOUR, Math.floor(booking.startHour));
+        const lastHour = Math.min(CLOSE_HOUR, Math.ceil(booking.endHour));
+        for (let hour = firstHour; hour < lastHour; hour += 1) {
+          const column = 2 + (hour - OPEN_HOUR);
+          shaded.push({ row: writeRow + index, column });
+        }
+        rows.push(cells);
+      });
+
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: `${tab}!A${writeRow + 1}`,
+        valueInputOption: "RAW",
+        requestBody: { values: rows },
+      });
+
+      const formatRequests: object[] = [
+        {
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: writeRow,
+              endRowIndex: writeRow + roomBookings.length,
+              startColumnIndex: 0,
+              endColumnIndex: LEGACY_LAST_COLUMN,
+            },
+            cell: { userEnteredFormat: { backgroundColor: LEGACY_WHITE } },
+            fields: "userEnteredFormat.backgroundColor",
+          },
+        },
+      ];
+      for (const cell of shaded) {
+        formatRequests.push({
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: cell.row,
+              endRowIndex: cell.row + 1,
+              startColumnIndex: cell.column,
+              endColumnIndex: cell.column + 1,
+            },
+            cell: { userEnteredFormat: { backgroundColor: LEGACY_PINK } },
+            fields: "userEnteredFormat.backgroundColor",
+          },
+        });
+      }
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: { requests: formatRequests },
+      });
     }
-    await this.sheets.spreadsheets.batchUpdate({
-      spreadsheetId: this.spreadsheetId,
-      requestBody: { requests: headerRequests },
-    });
   }
 
   /** Rebuilds the human-readable `สรุป ...` summary tab for one month. */
